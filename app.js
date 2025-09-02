@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Button, ActivityIndicator, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -44,6 +45,7 @@ export default function App() {
   const cameraRef = useRef(null);
   const [facing, setFacing] = useState('back');
   const [htmlContent, setHtmlContent] = useState(webViewHtml(""));
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   const rgbToHex = (r, g, b) =>
     "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
@@ -73,7 +75,7 @@ export default function App() {
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     let h, s, l = (max + min) / 2;
-  
+
     if (max === min) {
       h = s = 0; // achromatic
     } else {
@@ -92,7 +94,7 @@ export default function App() {
   const hslToRgb = (h, s, l) => {
     h /= 360; s /= 100; l /= 100;
     let r, g, b;
-  
+
     if (s === 0) {
       r = g = b = l; // achromatic
     } else {
@@ -116,7 +118,7 @@ export default function App() {
   const generatePalette = (r, g, b) => {
     const hsl = rgbToHsl(r, g, b);
     const palette = [];
-    
+
     // Analogous colors (45 degrees apart)
     const analogous1 = hslToRgb((hsl.h + 45) % 360, hsl.s, hsl.l);
     const analogous2 = hslToRgb((hsl.h - 45 + 360) % 360, hsl.s, hsl.l);
@@ -127,7 +129,7 @@ export default function App() {
     // Light and dark shades of the chosen color
     const lightened = hslToRgb(hsl.h, hsl.s, Math.min(100, hsl.l + 20));
     const darkened = hslToRgb(hsl.h, hsl.s, Math.max(0, hsl.l - 20));
-    
+
     palette.push(rgbToHex(lightened.r, lightened.g, lightened.b));
     palette.push(rgbToHex(analogous1.r, analogous1.g, analogous1.b));
     palette.push(rgbToHex(r, g, b));
@@ -137,7 +139,7 @@ export default function App() {
     // You can uncomment this to test complementary colors instead
     // palette.push(rgbToHex(r, g, b));
     // palette.push(rgbToHex(complementary.r, complementary.g, complementary.b));
-    
+
     return palette;
   };
 
@@ -162,18 +164,33 @@ export default function App() {
     }
   };
 
+  // OPTIMIZED PICK COLOR FUNCTION
   const pickColor = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || !isCameraReady) {
+      Alert.alert("Kamera hazır değil", "Lütfen bir saniye bekleyip tekrar deneyin.");
+      return;
+    }
     setLoading(true);
     setColor(null);
 
+    // WebView içeriğini önce sıfırla (eski base64 karışmasın)
+    setHtmlContent(webViewHtml(""));
+
     try {
+      // İlk fotoğrafı çek (buffer'da eski frame olabilir, bunu kullanma)
+      await cameraRef.current.takePictureAsync({
+        quality: 1,
+        base64: false,
+      });
+
+      // İkinci ve güncel fotoğrafı çek
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1,
         base64: true,
       });
 
-      const cropSize = 1; 
+      // Fotoğrafı işleyip 1x1 crop ve resize yap
+      const cropSize = 1;
       const manipResult = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{
@@ -187,11 +204,12 @@ export default function App() {
         { resize: { width: 1, height: 1 } }],
         { format: ImageManipulator.SaveFormat.PNG, compress: 1, base64: true }
       );
-      
+
       if (!manipResult.base64) {
         throw new Error("Base64 data not found after manipulation.");
       }
 
+      // Son olarak, sadece yeni frame'in base64'i ile htmlContent'i güncelle
       setHtmlContent(webViewHtml(manipResult.base64));
 
     } catch (error) {
@@ -232,21 +250,22 @@ export default function App() {
 
   return (
     <View style={{ flex: 1 }}>
-      <CameraView 
-        style={{ flex: 1 }} 
+      <CameraView
+        style={{ flex: 1 }}
         ref={cameraRef}
         facing={facing}
+        onCameraReady={() => setIsCameraReady(true)}
       />
-      
+
       {loading && (
-        <WebView 
-          source={{ html: htmlContent }} 
+        <WebView
+          source={{ html: htmlContent }}
           onMessage={handleWebViewMessage}
-          style={{ 
-            height: 1, 
-            width: 1, 
-            position: 'absolute', 
-            top: -1000, 
+          style={{
+            height: 1,
+            width: 1,
+            position: 'absolute',
+            top: -1000,
             opacity: 0,
           }}
           javaScriptEnabled={true}
@@ -283,9 +302,9 @@ export default function App() {
               <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
             </View>
           </View>
-          
+
           <Text style={styles.infoText}>CMYK: {color.cmyk.c}%, {color.cmyk.m}%, {color.cmyk.y}%, {color.cmyk.k}%</Text>
-          
+
           <Text style={styles.paletteTitle}>Color Palette:</Text>
           <View style={styles.paletteContainer}>
             {color.palette.map((p, i) => (
