@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from "react";
+import { Modal } from "react-native";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Button, ActivityIndicator, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -257,21 +258,23 @@ export default function App() {
         onCameraReady={() => setIsCameraReady(true)}
       />
 
-      {loading && (
-        <WebView
-          source={{ html: htmlContent }}
-          onMessage={handleWebViewMessage}
-          style={{
-            height: 1,
-            width: 1,
-            position: 'absolute',
-            top: -1000,
-            opacity: 0,
-          }}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-        />
-      )}
+{loading && (
+  <Modal visible transparent>
+    <WebView
+      source={{ html: htmlContent }}
+      onMessage={handleWebViewMessage}
+      style={{
+        width: 1,
+        height: 1,
+        opacity: 0,
+        backgroundColor: "transparent",
+        pointerEvents: "none",
+      }}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+    />
+  </Modal>
+)}
 
       <View style={styles.crosshair}>
         <View style={styles.crossLineVertical} />
