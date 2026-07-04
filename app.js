@@ -1,10 +1,10 @@
-
 import React, { useState, useRef } from "react";
-import { Modal } from "react-native";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Button, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Button, ActivityIndicator, Alert, SafeAreaView, Modal } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import WebView from "react-native-webview";
+import * as Haptics from "expo-haptics";
+import { StatusBar } from "expo-status-bar";
 
 const { width, height } = Dimensions.get("window");
 
@@ -70,7 +70,6 @@ export default function App() {
     return { r, g, b };
   };
 
-  // New HSL functions for color harmony
   const rgbToHsl = (r, g, b) => {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b);
@@ -78,7 +77,7 @@ export default function App() {
     let h, s, l = (max + min) / 2;
 
     if (max === min) {
-      h = s = 0; // achromatic
+      h = s = 0;
     } else {
       const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
@@ -97,21 +96,21 @@ export default function App() {
     let r, g, b;
 
     if (s === 0) {
-      r = g = b = l; // achromatic
+      r = g = b = l;
     } else {
       const hue2rgb = (p, q, t) => {
         if (t < 0) t += 1;
         if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
         return p;
       };
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1/3);
+      r = hue2rgb(p, q, h + 1 / 3);
       g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
+      b = hue2rgb(p, q, h - 1 / 3);
     }
     return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
   };
@@ -120,14 +119,8 @@ export default function App() {
     const hsl = rgbToHsl(r, g, b);
     const palette = [];
 
-    // Analogous colors (45 degrees apart)
     const analogous1 = hslToRgb((hsl.h + 45) % 360, hsl.s, hsl.l);
     const analogous2 = hslToRgb((hsl.h - 45 + 360) % 360, hsl.s, hsl.l);
-
-    // Complementary colors
-    const complementary = hslToRgb((hsl.h + 180) % 360, hsl.s, hsl.l);
-
-    // Light and dark shades of the chosen color
     const lightened = hslToRgb(hsl.h, hsl.s, Math.min(100, hsl.l + 20));
     const darkened = hslToRgb(hsl.h, hsl.s, Math.max(0, hsl.l - 20));
 
@@ -136,10 +129,6 @@ export default function App() {
     palette.push(rgbToHex(r, g, b));
     palette.push(rgbToHex(analogous2.r, analogous2.g, analogous2.b));
     palette.push(rgbToHex(darkened.r, darkened.g, darkened.b));
-
-    // You can uncomment this to test complementary colors instead
-    // palette.push(rgbToHex(r, g, b));
-    // palette.push(rgbToHex(complementary.r, complementary.g, complementary.b));
 
     return palette;
   };
@@ -165,53 +154,39 @@ export default function App() {
     }
   };
 
-  // OPTIMIZED PICK COLOR FUNCTION
   const pickColor = async () => {
     if (!cameraRef.current || !isCameraReady) {
-      Alert.alert("Kamera hazır değil", "Lütfen bir saniye bekleyip tekrar deneyin.");
+      Alert.alert("Camera Not Ready", "Please wait a moment and try again.");
       return;
     }
     setLoading(true);
     setColor(null);
 
-    // WebView içeriğini önce sıfırla (eski base64 karışmasın)
-    setHtmlContent(webViewHtml(""));
-
     try {
-      // İlk fotoğrafı çek (buffer'da eski frame olabilir, bunu kullanma)
-      await cameraRef.current.takePictureAsync({
-        quality: 1,
-        base64: false,
-      });
-
-      // İkinci ve güncel fotoğrafı çek
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 1,
+        quality: 0.7,
         base64: true,
       });
 
-      // Fotoğrafı işleyip 1x1 crop ve resize yap
-      const cropSize = 1;
       const manipResult = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{
           crop: {
-            originX: Math.max(0, photo.width / 2 - cropSize / 2),
-            originY: Math.max(0, photo.height / 2 - cropSize / 2),
-            width: cropSize,
-            height: cropSize,
+            originX: Math.max(0, photo.width / 2 - 0.5),
+            originY: Math.max(0, photo.height / 2 - 0.5),
+            width: 1,
+            height: 1,
           }
-        },
-        { resize: { width: 1, height: 1 } }],
-        { format: ImageManipulator.SaveFormat.PNG, compress: 1, base64: true }
+        }],
+        { format: ImageManipulator.SaveFormat.PNG, compress: 0.7, base64: true }
       );
 
       if (!manipResult.base64) {
         throw new Error("Base64 data not found after manipulation.");
       }
 
-      // Son olarak, sadece yeni frame'in base64'i ile htmlContent'i güncelle
       setHtmlContent(webViewHtml(manipResult.base64));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     } catch (error) {
       console.error("Error picking color:", error);
@@ -228,20 +203,27 @@ export default function App() {
       cmyk: rgbToCmyk(r, g, b),
       palette: color.palette,
     });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   if (!permission) {
-    return <View style={styles.container}><Text>Loading...</Text></View>;
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}><Text style={styles.loadingText}>Loading...</Text></View>
+      </SafeAreaView>
+    );
   }
 
   const hasPermission = permission.granted;
 
   if (!hasPermission) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Camera permission required</Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Text style={styles.message}>Camera permission required to capture colors</Text>
+          <Button onPress={requestPermission} title="Grant Permission" accessibilityLabel="Grant camera permission" />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -250,87 +232,123 @@ export default function App() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <CameraView
-        style={{ flex: 1 }}
-        ref={cameraRef}
-        facing={facing}
-        onCameraReady={() => setIsCameraReady(true)}
-      />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <View style={{ flex: 1 }}>
+        <CameraView
+          style={{ flex: 1 }}
+          ref={cameraRef}
+          facing={facing}
+          onCameraReady={() => setIsCameraReady(true)}
+        />
 
-{loading && (
-  <Modal visible transparent>
-    <WebView
-      source={{ html: htmlContent }}
-      onMessage={handleWebViewMessage}
-      style={{
-        width: 1,
-        height: 1,
-        opacity: 0,
-        backgroundColor: "transparent",
-        pointerEvents: "none",
-      }}
-      javaScriptEnabled={true}
-      domStorageEnabled={true}
-    />
-  </Modal>
-)}
+        {loading && (
+          <Modal visible transparent>
+            <WebView
+              source={{ html: htmlContent }}
+              onMessage={handleWebViewMessage}
+              style={{
+                width: 1,
+                height: 1,
+                opacity: 0,
+                backgroundColor: "transparent",
+                pointerEvents: "none",
+              }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+            />
+          </Modal>
+        )}
 
-      <View style={styles.crosshair}>
-        <View style={styles.crossLineVertical} />
-        <View style={styles.crossLineHorizontal} />
-        <View style={styles.centerDot} />
-      </View>
+        <View style={styles.crosshair} accessibilityLabel="Color picker crosshair">
+          <View style={styles.crossLineVertical} />
+          <View style={styles.crossLineHorizontal} />
+          <View style={styles.centerDot} />
+        </View>
 
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.button} onPress={pickColor} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Pick Color</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              pickColor();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }}
+            disabled={loading}
+            accessibilityLabel="Pick color from camera"
+            accessibilityRole="button"
+            accessibilityState={loading ? { disabled: true } : undefined}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Pick Color</Text>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
-          <Text style={styles.buttonText}>Flip Camera</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.flipButton}
+            onPress={() => {
+              toggleCameraFacing();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            accessibilityLabel="Flip camera"
+            accessibilityRole="button"
+          >
+            <Text style={styles.buttonText}>Flip Camera</Text>
+          </TouchableOpacity>
+        </View>
 
-      {color && (
-        <View style={styles.colorInfo}>
-          <View style={styles.colorPreviewContainer}>
-            <View style={[styles.colorPreview, { backgroundColor: color.hex }]} />
-            <View>
-              <Text style={styles.hexText}>{color.hex}</Text>
-              <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
+        {color && (
+          <View style={styles.colorInfo} accessible={true} accessibilityLabel={`Selected color ${color.hex}`}>
+            <View style={styles.colorPreviewContainer}>
+              <View style={[styles.colorPreview, { backgroundColor: color.hex }]} />
+              <View>
+                <Text style={styles.hexText}>{color.hex}</Text>
+                <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.infoText}>CMYK: {color.cmyk.c}%, {color.cmyk.m}%, {color.cmyk.y}%, {color.cmyk.k}%</Text>
+
+            <Text style={styles.paletteTitle}>Color Palette:</Text>
+            <View style={styles.paletteContainer}>
+              {color.palette.map((p, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => handlePalettePress(p)}
+                  style={[styles.paletteColor, { backgroundColor: p }]}
+                  accessibilityLabel={`Select color ${p}`}
+                  accessibilityRole="button"
+                />
+              ))}
             </View>
           </View>
-
-          <Text style={styles.infoText}>CMYK: {color.cmyk.c}%, {color.cmyk.m}%, {color.cmyk.y}%, {color.cmyk.k}%</Text>
-
-          <Text style={styles.paletteTitle}>Color Palette:</Text>
-          <View style={styles.paletteContainer}>
-            {color.palette.map((p, i) => (
-              <TouchableOpacity key={i} onPress={() => handlePalettePress(p)} style={[styles.paletteColor, { backgroundColor: p }]} />
-            ))}
-          </View>
-        </View>
-      )}
-    </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
+  loadingText: {
+    color: "#fff",
+    fontSize: 16,
+  },
   message: {
     textAlign: 'center',
     paddingBottom: 20,
     fontSize: 16,
+    color: "#fff",
   },
   buttonsContainer: {
     position: "absolute",
@@ -409,8 +427,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   paletteColor: {
-    width: 30,
-    height: 30,
+    width: 44,
+    height: 44,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: '#ccc',

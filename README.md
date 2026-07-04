@@ -1,22 +1,45 @@
-# Camera Color Picker 🎨
+# ColorPicker
 
-This is a simple, yet powerful, React Native application that turns your phone's camera into a live color detector. Point your camera at any object and tap a button to instantly get its color codes and a harmonious color palette for your next design project.
+A real-world color picker app built with Expo. Point your camera at any object to capture its color and get RGB, HEX, CMYK values along with a harmonious color palette.
 
----
+## Features
 
-## ✨ Features
+- Real-time color capture via camera
+- RGB, HEX, and CMYK color values
+- Analogous color palette generation
+- Light and dark shade preview
+- Crosshair targeting for precise color selection
+- Front/back camera toggle
 
-* **Real-time Color Picking:** Use your phone's camera to capture a pixel and get its exact color.
-* **Multiple Color Formats:** Instantly view the color in **HEX**, **RGB**, and **CMYK** formats.
-* **Harmonious Color Palette:** The app generates a compatible color palette based on your chosen color using a harmony algorithm, providing a great starting point for visual designs.
-* **Interactive Palette:** Tap on any color in the generated palette to see its individual color codes.
-* **Front/Back Camera Toggle:** Easily switch between the front and back cameras.
-* **User-Friendly UI:** A clean, minimal interface with a center crosshair to help you target the desired color.
+## Tech Stack
 
----
+- React Native 0.79 + Expo 53
+- expo-camera for camera access
+- expo-image-manipulator for pixel extraction
+- react-native-webview for color data processing
 
-## 📸 How It Works
+## Build & Deploy
 
-The app uses `expo-camera` to access the live camera feed. When you tap "Pick Color," it captures a single-pixel screenshot at the center of the crosshair. This tiny 1x1 pixel image is then processed using a hidden `WebView` and JavaScript to extract its RGB values.
+```bash
+# Install dependencies
+npm install
 
-The RGB data is then used to calculate the HEX and CMYK codes. A custom algorithm uses the color's hue to generate a harmonious palette of complementary and analogous colors, which are perfect for visual design.
+# Start development
+npm start
+
+# Build for iOS (requires EAS)
+eas build --platform ios --profile production
+
+# Build for Android
+eas build --platform android --profile production
+
+# Submit to App Store
+eas submit --platform ios --profile production
+```
+
+## Configuration
+
+Before building for production, update `eas.json` with your Apple Developer credentials:
+- `appleId`: Your Apple ID
+- `ascAppId`: Your App Store Connect app ID
+- `appleTeamId`: Your Apple Developer Team ID
