@@ -14,10 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.colorpicker.app",
+      "bundleIdentifier": "com.alu.colorpicker",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app uses the camera to capture colors from the real world."
+        "NSCameraUsageDescription": "This app uses the camera to capture colors from the real world.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,10 +27,16 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.colorpicker.app"
+      "package": "com.alu.colorpicker"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0954f3d3-f1ee-4b53-a94d-82b2a356bb33"
+      }
+    },
+    "owner": "alperunlu"
   }
 }

@@ -1,12 +1,16 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Button, ActivityIndicator, Alert, SafeAreaView, Modal } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, SafeAreaView, Modal } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import WebView from "react-native-webview";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
 import { StatusBar } from "expo-status-bar";
 
-const { width, height } = Dimensions.get("window");
+// Size of the square region sampled around the crosshair. Averaging a small
+// region instead of reading one pixel smooths out camera sensor noise.
+const SAMPLE_SIZE = 9;
+const PROCESSING_TIMEOUT_MS = 10000;
 
 const webViewHtml = (base64) => `
   <html>
@@ -16,23 +20,37 @@ const webViewHtml = (base64) => `
   </head>
   <body>
     <canvas id="canvas" style="display: none;"></canvas>
-    <img id="image" style="display: none;" onload="processImage()" />
+    <img id="image" style="display: none;" onload="processImage()" onerror="reportError()" />
     <script>
       const image = document.getElementById('image');
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
       image.src = "data:image/png;base64,${base64}";
 
-      function processImage() {
-        canvas.width = 1;
-        canvas.height = 1;
-        ctx.drawImage(image, 0, 0, 1, 1);
-        const pixelData = ctx.getImageData(0, 0, 1, 1).data;
-        const r = pixelData[0];
-        const g = pixelData[1];
-        const b = pixelData[2];
+      function reportError() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ error: true }));
+      }
 
-        window.ReactNativeWebView.postMessage(JSON.stringify({ r, g, b }));
+      function processImage() {
+        try {
+          canvas.width = image.width;
+          canvas.height = image.height;
+          ctx.drawImage(image, 0, 0);
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          let r = 0, g = 0, b = 0;
+          const count = data.length / 4;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+          }
+          r = Math.round(r / count);
+          g = Math.round(g / count);
+          b = Math.round(b / count);
+          window.ReactNativeWebView.postMessage(JSON.stringify({ r, g, b }));
+        } catch (e) {
+          reportError();
+        }
       }
     </script>
   </body>
@@ -44,23 +62,36 @@ export default function App() {
   const [color, setColor] = useState(null);
   const [loading, setLoading] = useState(false);
   const cameraRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const copiedTimerRef = useRef(null);
   const [facing, setFacing] = useState('back');
+  const [torch, setTorch] = useState(false);
   const [htmlContent, setHtmlContent] = useState(webViewHtml(""));
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [copiedLabel, setCopiedLabel] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(timeoutRef.current);
+      clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   const rgbToHex = (r, g, b) =>
-    "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    ("#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)).toUpperCase();
 
   const rgbToCmyk = (r, g, b) => {
     let c = 1 - r / 255;
     let m = 1 - g / 255;
     let y = 1 - b / 255;
-    let k = Math.min(c, m, y);
+    const k = Math.min(c, m, y);
+    if (k === 1) {
+      return { c: "0", m: "0", y: "0", k: "100" };
+    }
     c = ((c - k) / (1 - k) * 100).toFixed(0);
     m = ((m - k) / (1 - k) * 100).toFixed(0);
     y = ((y - k) / (1 - k) * 100).toFixed(0);
-    k = (k * 100).toFixed(0);
-    return { c, m, y, k };
+    return { c, m, y, k: (k * 100).toFixed(0) };
   };
 
   const hexToRgb = (hex) => {
@@ -133,20 +164,31 @@ export default function App() {
     return palette;
   };
 
+  const buildColor = (r, g, b, palette) => {
+    const hsl = rgbToHsl(r, g, b);
+    return {
+      r, g, b,
+      hex: rgbToHex(r, g, b),
+      cmyk: rgbToCmyk(r, g, b),
+      hsl: {
+        h: hsl.h.toFixed(0),
+        s: hsl.s.toFixed(0),
+        l: hsl.l.toFixed(0),
+      },
+      palette: palette || generatePalette(r, g, b),
+    };
+  };
+
   const handleWebViewMessage = (event) => {
+    clearTimeout(timeoutRef.current);
     try {
-      const { r, g, b } = JSON.parse(event.nativeEvent.data);
-      if (typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number' || isNaN(r) || isNaN(g) || isNaN(b)) {
+      const { r, g, b, error } = JSON.parse(event.nativeEvent.data);
+      if (error || typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number' || isNaN(r) || isNaN(g) || isNaN(b)) {
         throw new Error("Invalid color data received.");
       }
-      const newColor = {
-        r, g, b,
-        hex: rgbToHex(r, g, b),
-        cmyk: rgbToCmyk(r, g, b),
-        palette: generatePalette(r, g, b),
-      };
-      setColor(newColor);
+      setColor(buildColor(r, g, b));
       setLoading(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error processing WebView message:", error);
       setLoading(false);
@@ -159,6 +201,7 @@ export default function App() {
       Alert.alert("Camera Not Ready", "Please wait a moment and try again.");
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     setColor(null);
 
@@ -168,17 +211,18 @@ export default function App() {
         base64: true,
       });
 
+      const sampleSize = Math.min(SAMPLE_SIZE, photo.width, photo.height);
       const manipResult = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{
           crop: {
-            originX: Math.max(0, photo.width / 2 - 0.5),
-            originY: Math.max(0, photo.height / 2 - 0.5),
-            width: 1,
-            height: 1,
+            originX: Math.max(0, Math.round((photo.width - sampleSize) / 2)),
+            originY: Math.max(0, Math.round((photo.height - sampleSize) / 2)),
+            width: sampleSize,
+            height: sampleSize,
           }
         }],
-        { format: ImageManipulator.SaveFormat.PNG, compress: 0.7, base64: true }
+        { format: ImageManipulator.SaveFormat.PNG, base64: true }
       );
 
       if (!manipResult.base64) {
@@ -186,7 +230,11 @@ export default function App() {
       }
 
       setHtmlContent(webViewHtml(manipResult.base64));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      timeoutRef.current = setTimeout(() => {
+        setLoading(false);
+        Alert.alert("Error", "Color processing timed out. Please try again.");
+      }, PROCESSING_TIMEOUT_MS);
 
     } catch (error) {
       console.error("Error picking color:", error);
@@ -197,13 +245,20 @@ export default function App() {
 
   const handlePalettePress = (hexCode) => {
     const { r, g, b } = hexToRgb(hexCode);
-    setColor({
-      r, g, b,
-      hex: hexCode,
-      cmyk: rgbToCmyk(r, g, b),
-      palette: color.palette,
-    });
+    setColor(buildColor(r, g, b, color.palette));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const copyToClipboard = async (label, value) => {
+    try {
+      await Clipboard.setStringAsync(value);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      clearTimeout(copiedTimerRef.current);
+      setCopiedLabel(label);
+      copiedTimerRef.current = setTimeout(() => setCopiedLabel(null), 1200);
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+    }
   };
 
   if (!permission) {
@@ -214,14 +269,19 @@ export default function App() {
     );
   }
 
-  const hasPermission = permission.granted;
-
-  if (!hasPermission) {
+  if (!permission.granted) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
           <Text style={styles.message}>Camera permission required to capture colors</Text>
-          <Button onPress={requestPermission} title="Grant Permission" accessibilityLabel="Grant camera permission" />
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={requestPermission}
+            accessibilityLabel="Grant camera permission"
+            accessibilityRole="button"
+          >
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -229,6 +289,12 @@ export default function App() {
 
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function toggleTorch() {
+    setTorch(current => !current);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
   return (
@@ -239,6 +305,7 @@ export default function App() {
           style={{ flex: 1 }}
           ref={cameraRef}
           facing={facing}
+          enableTorch={torch}
           onCameraReady={() => setIsCameraReady(true)}
         />
 
@@ -247,6 +314,11 @@ export default function App() {
             <WebView
               source={{ html: htmlContent }}
               onMessage={handleWebViewMessage}
+              onError={() => {
+                clearTimeout(timeoutRef.current);
+                setLoading(false);
+                Alert.alert("Error", "Could not process the image.");
+              }}
               style={{
                 width: 1,
                 height: 1,
@@ -260,23 +332,40 @@ export default function App() {
           </Modal>
         )}
 
-        <View style={styles.crosshair} accessibilityLabel="Color picker crosshair">
+        <View style={styles.crosshair} pointerEvents="none" accessibilityLabel="Color picker crosshair">
           <View style={styles.crossLineVertical} />
           <View style={styles.crossLineHorizontal} />
           <View style={styles.centerDot} />
         </View>
 
+        <View style={styles.topButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.iconButton, torch && styles.iconButtonActive]}
+            onPress={toggleTorch}
+            accessibilityLabel={torch ? "Turn torch off" : "Turn torch on"}
+            accessibilityRole="button"
+          >
+            <Text style={styles.iconButtonText}>{torch ? "Torch On" : "Torch Off"}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={toggleCameraFacing}
+            accessibilityLabel="Flip camera"
+            accessibilityRole="button"
+          >
+            <Text style={styles.iconButtonText}>Flip</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
-            style={styles.button}
-            onPress={() => {
-              pickColor();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }}
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={pickColor}
             disabled={loading}
             accessibilityLabel="Pick color from camera"
             accessibilityRole="button"
-            accessibilityState={loading ? { disabled: true } : undefined}
+            accessibilityState={{ disabled: loading }}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -284,44 +373,64 @@ export default function App() {
               <Text style={styles.buttonText}>Pick Color</Text>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.flipButton}
-            onPress={() => {
-              toggleCameraFacing();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            accessibilityLabel="Flip camera"
-            accessibilityRole="button"
-          >
-            <Text style={styles.buttonText}>Flip Camera</Text>
-          </TouchableOpacity>
         </View>
 
         {color && (
-          <View style={styles.colorInfo} accessible={true} accessibilityLabel={`Selected color ${color.hex}`}>
+          <View style={styles.colorInfo} accessible={false}>
             <View style={styles.colorPreviewContainer}>
               <View style={[styles.colorPreview, { backgroundColor: color.hex }]} />
-              <View>
-                <Text style={styles.hexText}>{color.hex}</Text>
-                <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
+              <View style={styles.colorValues}>
+                <TouchableOpacity
+                  onPress={() => copyToClipboard("HEX", color.hex)}
+                  accessibilityLabel={`Copy hex value ${color.hex}`}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.hexText}>{color.hex}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => copyToClipboard("RGB", `rgb(${color.r}, ${color.g}, ${color.b})`)}
+                  accessibilityLabel="Copy RGB value"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.infoText}>RGB  {color.r}, {color.g}, {color.b}</Text>
+                </TouchableOpacity>
               </View>
+              {copiedLabel && (
+                <View style={styles.copiedBadge}>
+                  <Text style={styles.copiedText}>{copiedLabel} copied</Text>
+                </View>
+              )}
             </View>
 
-            <Text style={styles.infoText}>CMYK: {color.cmyk.c}%, {color.cmyk.m}%, {color.cmyk.y}%, {color.cmyk.k}%</Text>
+            <TouchableOpacity
+              onPress={() => copyToClipboard("HSL", `hsl(${color.hsl.h}, ${color.hsl.s}%, ${color.hsl.l}%)`)}
+              accessibilityLabel="Copy HSL value"
+              accessibilityRole="button"
+            >
+              <Text style={styles.infoText}>HSL  {color.hsl.h}°, {color.hsl.s}%, {color.hsl.l}%</Text>
+            </TouchableOpacity>
 
-            <Text style={styles.paletteTitle}>Color Palette:</Text>
+            <TouchableOpacity
+              onPress={() => copyToClipboard("CMYK", `cmyk(${color.cmyk.c}%, ${color.cmyk.m}%, ${color.cmyk.y}%, ${color.cmyk.k}%)`)}
+              accessibilityLabel="Copy CMYK value"
+              accessibilityRole="button"
+            >
+              <Text style={styles.infoText}>CMYK  {color.cmyk.c}%, {color.cmyk.m}%, {color.cmyk.y}%, {color.cmyk.k}%</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.paletteTitle}>Palette</Text>
             <View style={styles.paletteContainer}>
               {color.palette.map((p, i) => (
                 <TouchableOpacity
                   key={i}
                   onPress={() => handlePalettePress(p)}
-                  style={[styles.paletteColor, { backgroundColor: p }]}
+                  style={[styles.paletteColor, { backgroundColor: p }, p === color.hex && styles.paletteColorSelected]}
                   accessibilityLabel={`Select color ${p}`}
                   accessibilityRole="button"
                 />
               ))}
             </View>
+            <Text style={styles.hintText}>Tap a value to copy it</Text>
           </View>
         )}
       </View>
@@ -350,88 +459,142 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#fff",
   },
-  buttonsContainer: {
+  permissionButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  topButtonsContainer: {
     position: "absolute",
-    bottom: 20,
+    top: 16,
     left: 20,
     right: 20,
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  iconButton: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  iconButtonActive: {
+    backgroundColor: "rgba(255, 200, 0, 0.35)",
+    borderColor: "rgba(255, 200, 0, 0.8)",
+  },
+  iconButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  buttonsContainer: {
+    position: "absolute",
+    bottom: 24,
+    left: 0,
+    right: 0,
     alignItems: "center",
   },
   button: {
-    backgroundColor: "rgba(0, 0, 255, 0.8)",
-    padding: 15,
-    borderRadius: 10,
-    minWidth: 120,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    minWidth: 180,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.4)",
   },
-  flipButton: {
-    backgroundColor: "rgba(0, 128, 0, 0.8)",
-    padding: 15,
-    borderRadius: 10,
-    minWidth: 120,
-    alignItems: "center",
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 16,
   },
   colorInfo: {
     position: "absolute",
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: "rgba(18, 18, 18, 0.92)",
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   colorPreviewContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
   },
+  colorValues: {
+    flex: 1,
+  },
   colorPreview: {
-    width: 50,
-    height: 50,
-    borderRadius: 5,
-    marginRight: 10,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  copiedBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  copiedText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
   },
   hexText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: "#fff",
     marginBottom: 2,
   },
-  rgbText: {
-    fontSize: 12,
-    color: '#666',
-  },
   infoText: {
-    fontSize: 14,
-    marginBottom: 5,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginBottom: 4,
+    fontVariant: ["tabular-nums"],
   },
   paletteTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 5,
+    color: "#fff",
+    marginTop: 8,
+    marginBottom: 8,
   },
   paletteContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   paletteColor: {
-    width: 44,
-    height: 44,
-    borderRadius: 5,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  paletteColorSelected: {
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  hintText: {
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.45)",
+    marginTop: 10,
+    textAlign: "center",
   },
   crosshair: {
     position: "absolute",
