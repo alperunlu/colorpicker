@@ -66,7 +66,7 @@ export default function App() {
   const copiedTimerRef = useRef(null);
   const [facing, setFacing] = useState('back');
   const [torch, setTorch] = useState(false);
-  const [htmlContent, setHtmlContent] = useState(webViewHtml(""));
+  const [pendingBase64, setPendingBase64] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [copiedLabel, setCopiedLabel] = useState(null);
 
@@ -188,10 +188,12 @@ export default function App() {
       }
       setColor(buildColor(r, g, b));
       setLoading(false);
+      setPendingBase64(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error processing WebView message:", error);
       setLoading(false);
+      setPendingBase64(null);
       Alert.alert("Error", "Could not retrieve color information.");
     }
   };
@@ -204,6 +206,7 @@ export default function App() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     setColor(null);
+    setPendingBase64(null);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -229,16 +232,18 @@ export default function App() {
         throw new Error("Base64 data not found after manipulation.");
       }
 
-      setHtmlContent(webViewHtml(manipResult.base64));
+      setPendingBase64(manipResult.base64);
 
       timeoutRef.current = setTimeout(() => {
         setLoading(false);
+        setPendingBase64(null);
         Alert.alert("Error", "Color processing timed out. Please try again.");
       }, PROCESSING_TIMEOUT_MS);
 
     } catch (error) {
       console.error("Error picking color:", error);
       setLoading(false);
+      setPendingBase64(null);
       Alert.alert("Error", "Failed to capture image.");
     }
   };
@@ -309,14 +314,15 @@ export default function App() {
           onCameraReady={() => setIsCameraReady(true)}
         />
 
-        {loading && (
+        {pendingBase64 && (
           <Modal visible transparent>
             <WebView
-              source={{ html: htmlContent }}
+              source={{ html: webViewHtml(pendingBase64) }}
               onMessage={handleWebViewMessage}
               onError={() => {
                 clearTimeout(timeoutRef.current);
                 setLoading(false);
+                setPendingBase64(null);
                 Alert.alert("Error", "Could not process the image.");
               }}
               style={{
