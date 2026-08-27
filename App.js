@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, SafeAreaView, Modal } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, SafeAreaView, Linking } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import WebView from "react-native-webview";
@@ -12,7 +12,14 @@ import { StatusBar } from "expo-status-bar";
 const SAMPLE_SIZE = 9;
 const PROCESSING_TIMEOUT_MS = 10000;
 
-const webViewHtml = (base64) => `
+// Loaded once and kept mounted for the app's lifetime. Reloading the WebView's
+// `source` on every capture (the previous approach) meant a brand-new WKWebView
+// had to spin up on the very first press (slow enough to fail) and left the
+// previous page's in-flight script able to deliver a late, stale result after
+// the next capture had already started. Keeping one persistent page and just
+// postMessage-ing new work into it avoids both problems; each request carries
+// a requestId so any late/stale response can be identified and ignored.
+const WEBVIEW_HTML = `
   <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,38 +27,46 @@ const webViewHtml = (base64) => `
   </head>
   <body>
     <canvas id="canvas" style="display: none;"></canvas>
-    <img id="image" style="display: none;" onload="processImage()" onerror="reportError()" />
     <script>
-      const image = document.getElementById('image');
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
-      image.src = "data:image/png;base64,${base64}";
 
-      function reportError() {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ error: true }));
-      }
-
-      function processImage() {
-        try {
-          canvas.width = image.width;
-          canvas.height = image.height;
-          ctx.drawImage(image, 0, 0);
-          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-          let r = 0, g = 0, b = 0;
-          const count = data.length / 4;
-          for (let i = 0; i < data.length; i += 4) {
-            r += data[i];
-            g += data[i + 1];
-            b += data[i + 2];
+      function handleIncoming(raw) {
+        var msg;
+        try { msg = JSON.parse(raw); } catch (e) { return; }
+        var requestId = msg.requestId;
+        var image = new Image();
+        image.onload = function () {
+          try {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            var r = 0, g = 0, b = 0;
+            var count = data.length / 4;
+            for (var i = 0; i < data.length; i += 4) {
+              r += data[i];
+              g += data[i + 1];
+              b += data[i + 2];
+            }
+            r = Math.round(r / count);
+            g = Math.round(g / count);
+            b = Math.round(b / count);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ r: r, g: g, b: b, requestId: requestId }));
+          } catch (e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ error: true, requestId: requestId }));
           }
-          r = Math.round(r / count);
-          g = Math.round(g / count);
-          b = Math.round(b / count);
-          window.ReactNativeWebView.postMessage(JSON.stringify({ r, g, b }));
-        } catch (e) {
-          reportError();
-        }
+        };
+        image.onerror = function () {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ error: true, requestId: requestId }));
+        };
+        image.src = "data:image/png;base64," + msg.base64;
       }
+
+      // react-native-webview dispatches injected messages on window for iOS
+      // and on document for Android; listen on both to be safe everywhere.
+      window.addEventListener('message', function (event) { handleIncoming(event.data); });
+      document.addEventListener('message', function (event) { handleIncoming(event.data); });
     </script>
   </body>
   </html>
@@ -62,13 +77,19 @@ export default function App() {
   const [color, setColor] = useState(null);
   const [loading, setLoading] = useState(false);
   const cameraRef = useRef(null);
+  const webViewRef = useRef(null);
   const timeoutRef = useRef(null);
   const copiedTimerRef = useRef(null);
   const [facing, setFacing] = useState('back');
   const [torch, setTorch] = useState(false);
-  const [pendingBase64, setPendingBase64] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isWebViewReady, setIsWebViewReady] = useState(false);
   const [copiedLabel, setCopiedLabel] = useState(null);
+  // Identifies the in-flight capture. Bumped on every pickColor() call; any
+  // WebView response whose requestId doesn't match the current value is a
+  // stale result from a previous capture and gets ignored.
+  const requestIdRef = useRef(0);
+  const activeRequestIdRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -180,22 +201,29 @@ export default function App() {
   };
 
   const handleWebViewMessage = (event) => {
-    clearTimeout(timeoutRef.current);
+    let parsed;
     try {
-      const { r, g, b, error } = JSON.parse(event.nativeEvent.data);
-      if (error || typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number' || isNaN(r) || isNaN(g) || isNaN(b)) {
-        throw new Error("Invalid color data received.");
-      }
-      setColor(buildColor(r, g, b));
-      setLoading(false);
-      setPendingBase64(null);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      parsed = JSON.parse(event.nativeEvent.data);
     } catch (error) {
-      console.error("Error processing WebView message:", error);
-      setLoading(false);
-      setPendingBase64(null);
-      Alert.alert("Error", "Could not retrieve color information.");
+      return; // Malformed payload; nothing we can do with it.
     }
+
+    const { r, g, b, error, requestId } = parsed;
+    if (requestId !== activeRequestIdRef.current) {
+      return; // Stale response from an earlier capture; ignore it.
+    }
+
+    clearTimeout(timeoutRef.current);
+
+    if (error || typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number' || isNaN(r) || isNaN(g) || isNaN(b)) {
+      setLoading(false);
+      Alert.alert("Error", "Could not retrieve color information.");
+      return;
+    }
+
+    setColor(buildColor(r, g, b));
+    setLoading(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const pickColor = async () => {
@@ -203,15 +231,22 @@ export default function App() {
       Alert.alert("Camera Not Ready", "Please wait a moment and try again.");
       return;
     }
+    if (!isWebViewReady) {
+      Alert.alert("Please Wait", "Still preparing color processing. Try again in a moment.");
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     setColor(null);
-    setPendingBase64(null);
+
+    const requestId = ++requestIdRef.current;
+    activeRequestIdRef.current = requestId;
+    clearTimeout(timeoutRef.current);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
-        base64: true,
+        quality: 1,
+        shutterSound: false,
       });
 
       const sampleSize = Math.min(SAMPLE_SIZE, photo.width, photo.height);
@@ -232,18 +267,27 @@ export default function App() {
         throw new Error("Base64 data not found after manipulation.");
       }
 
-      setPendingBase64(manipResult.base64);
+      // A newer capture may have started while we were awaiting the camera/
+      // manipulator; if so, drop this one instead of racing it against the
+      // newer request.
+      if (activeRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      webViewRef.current?.postMessage(JSON.stringify({ base64: manipResult.base64, requestId }));
 
       timeoutRef.current = setTimeout(() => {
-        setLoading(false);
-        setPendingBase64(null);
-        Alert.alert("Error", "Color processing timed out. Please try again.");
+        if (activeRequestIdRef.current === requestId) {
+          setLoading(false);
+          Alert.alert("Error", "Color processing timed out. Please try again.");
+        }
       }, PROCESSING_TIMEOUT_MS);
 
     } catch (error) {
       console.error("Error picking color:", error);
-      setLoading(false);
-      setPendingBase64(null);
+      if (activeRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
       Alert.alert("Error", "Failed to capture image.");
     }
   };
@@ -275,17 +319,21 @@ export default function App() {
   }
 
   if (!permission.granted) {
+    // Once the user denies the request once, iOS won't show the system
+    // prompt again — requestPermission() would just silently resolve to
+    // denied, leaving the button dead. Send them to Settings instead.
+    const canAskAgain = permission.canAskAgain;
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
           <Text style={styles.message}>Camera permission required to capture colors</Text>
           <TouchableOpacity
             style={styles.permissionButton}
-            onPress={requestPermission}
-            accessibilityLabel="Grant camera permission"
+            onPress={canAskAgain ? requestPermission : () => Linking.openSettings()}
+            accessibilityLabel={canAskAgain ? "Grant camera permission" : "Open Settings to grant camera permission"}
             accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>Grant Permission</Text>
+            <Text style={styles.buttonText}>{canAskAgain ? "Grant Permission" : "Open Settings"}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -307,36 +355,45 @@ export default function App() {
       <StatusBar style="light" />
       <View style={{ flex: 1 }}>
         <CameraView
-          style={{ flex: 1 }}
+          // Explicit absolute fill instead of flex:1 — under the New Architecture,
+          // CameraView's native view has been observed to not reliably pick up a
+          // flex-computed height (it settles for its own smaller intrinsic size,
+          // leaving the rest of the screen black). Pinning all four edges sidesteps
+          // that measurement path entirely.
+          style={StyleSheet.absoluteFillObject}
           ref={cameraRef}
           facing={facing}
           enableTorch={torch}
           onCameraReady={() => setIsCameraReady(true)}
         />
 
-        {pendingBase64 && (
-          <Modal visible transparent>
-            <WebView
-              source={{ html: webViewHtml(pendingBase64) }}
-              onMessage={handleWebViewMessage}
-              onError={() => {
-                clearTimeout(timeoutRef.current);
-                setLoading(false);
-                setPendingBase64(null);
-                Alert.alert("Error", "Could not process the image.");
-              }}
-              style={{
-                width: 1,
-                height: 1,
-                opacity: 0,
-                backgroundColor: "transparent",
-                pointerEvents: "none",
-              }}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-            />
-          </Modal>
-        )}
+        <WebView
+          ref={webViewRef}
+          source={{ html: WEBVIEW_HTML }}
+          onLoadEnd={() => setIsWebViewReady(true)}
+          onMessage={handleWebViewMessage}
+          onError={() => {
+            setIsWebViewReady(false);
+            const requestId = activeRequestIdRef.current;
+            if (requestId !== null) {
+              clearTimeout(timeoutRef.current);
+              setLoading(false);
+              Alert.alert("Error", "Could not process the image.");
+            }
+          }}
+          style={{
+            width: 1,
+            height: 1,
+            opacity: 0,
+            position: "absolute",
+            top: -1000,
+            left: -1000,
+            backgroundColor: "transparent",
+          }}
+          pointerEvents="none"
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+        />
 
         <View style={styles.crosshair} pointerEvents="none" accessibilityLabel="Color picker crosshair">
           <View style={styles.crossLineVertical} />
