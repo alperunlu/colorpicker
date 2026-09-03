@@ -35,3 +35,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# App Store submission assets (listing text, privacy policy, screenshots) —
+# generated locally, not part of the app itself.
+store-assets/
