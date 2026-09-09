@@ -333,7 +333,7 @@ export default function App() {
             accessibilityLabel={canAskAgain ? "Grant camera permission" : "Open Settings to grant camera permission"}
             accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>{canAskAgain ? "Grant Permission" : "Open Settings"}</Text>
+            <Text style={styles.buttonText}>{canAskAgain ? "Continue" : "Open Settings"}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
