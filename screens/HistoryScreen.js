@@ -1,0 +1,117 @@
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
+import ColorCard from "../components/ColorCard";
+import { hexToRgb } from "../utils/color";
+
+export default function HistoryScreen({
+  items,
+  paletteType,
+  onChangePaletteType,
+  onToggleFavorite,
+  onDelete,
+  onClearNonFavorites,
+}) {
+  const [filter, setFilter] = useState("all"); // "all" | "favorites"
+  const [selected, setSelected] = useState(null); // { hex, rgb }
+
+  const visible = filter === "favorites" ? items.filter((i) => i.favorite) : items;
+  const selectedItem = selected && items.find((i) => i.hex === selected.hex);
+
+  const confirmClear = () => {
+    Alert.alert("Clear history?", "Favorites are kept. This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: onClearNonFavorites },
+    ]);
+  };
+
+  return (
+    <View style={styles.flex}>
+      <View style={styles.toolbar}>
+        {["all", "favorites"].map((f) => (
+          <TouchableOpacity
+            key={f}
+            onPress={() => setFilter(f)}
+            style={[styles.chip, filter === f && styles.chipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: filter === f }}
+          >
+            <Text style={styles.chipText}>{f === "all" ? "All" : "Favorites"}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.flex} />
+        {items.some((i) => !i.favorite) && (
+          <TouchableOpacity onPress={confirmClear} accessibilityRole="button" accessibilityLabel="Clear history">
+            <Text style={styles.clear}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <FlatList
+        data={visible}
+        keyExtractor={(item) => item.hex}
+        contentContainerStyle={[styles.list, selected && { paddingBottom: 320 }]}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {filter === "favorites" ? "No favorites yet. Tap ☆ on a color to keep it here." : "Colors you pick will show up here."}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.row, selected?.hex === item.hex && styles.rowActive]}
+            onPress={() => setSelected({ hex: item.hex, rgb: hexToRgb(item.hex) })}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.name} ${item.hex}`}
+          >
+            <View style={[styles.swatch, { backgroundColor: item.hex }]} />
+            <View style={styles.flex}>
+              <Text style={styles.hex}>{item.hex}</Text>
+              <Text style={styles.name}>{item.name}</Text>
+            </View>
+            {item.favorite && <Text style={styles.star}>★</Text>}
+          </TouchableOpacity>
+        )}
+      />
+
+      {selected && (
+        <View style={styles.cardWrap}>
+          <ColorCard
+            rgb={selected.rgb}
+            paletteType={paletteType}
+            onChangePaletteType={onChangePaletteType}
+            onChangeRgb={(rgb) => setSelected({ hex: selected.hex, rgb })}
+            isFavorite={!!selectedItem?.favorite}
+            onToggleFavorite={() => onToggleFavorite(selected.hex)}
+            onDelete={selectedItem ? () => { onDelete(selected.hex); setSelected(null); } : undefined}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  toolbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12 },
+  chip: {
+    paddingVertical: 6, paddingHorizontal: 14, borderRadius: 16, marginRight: 8,
+    borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  chipActive: { backgroundColor: "rgba(255, 255, 255, 0.25)", borderColor: "#fff" },
+  chipText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  clear: { color: "#ff6b6b", fontSize: 13, fontWeight: "600" },
+  list: { paddingHorizontal: 20, paddingBottom: 20 },
+  empty: { color: "rgba(255, 255, 255, 0.55)", textAlign: "center", marginTop: 48, fontSize: 14 },
+  row: {
+    flexDirection: "row", alignItems: "center", padding: 10, borderRadius: 12, marginBottom: 8,
+    borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  rowActive: { borderColor: "#fff", backgroundColor: "rgba(255, 255, 255, 0.08)" },
+  swatch: {
+    width: 44, height: 44, borderRadius: 8, marginRight: 12,
+    borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  hex: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  name: { color: "rgba(255, 255, 255, 0.6)", fontSize: 12, marginTop: 2 },
+  star: { color: "#FFC800", fontSize: 20, marginLeft: 8 },
+  cardWrap: { position: "absolute", bottom: 12, left: 20, right: 20 },
+});

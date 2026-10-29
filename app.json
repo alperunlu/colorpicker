@@ -2,7 +2,7 @@
   "expo": {
     "name": "ColorPicker",
     "slug": "colorpicker",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -46,6 +46,14 @@
         "expo-camera",
         {
           "cameraPermission": "This app uses the camera to capture colors from the real world.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "This app lets you choose a photo from your library to read its colors.",
+          "cameraPermission": false,
           "microphonePermission": false
         }
       ]
