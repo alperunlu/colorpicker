@@ -15,6 +15,7 @@ export default function ColorCard({
   isFavorite,
   onToggleFavorite,
   onDelete,
+  opaque,
 }) {
   const { height } = useWindowDimensions();
   const [copiedLabel, setCopiedLabel] = useState(null);
@@ -48,7 +49,7 @@ export default function ColorCard({
   const fmt = (c) => `${formatDecimal(c.ratio)}:1 ${c.level === "Fail" ? t("card.fail") : c.level}`;
 
   return (
-    <View style={[styles.card, { maxHeight: height * 0.6 }]}>
+    <View style={[styles.card, opaque && styles.cardOpaque, { maxHeight: height * 0.6 }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={[styles.swatch, { backgroundColor: color.hex }]} />
@@ -139,6 +140,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.15)",
   },
+  // Over a list (not the camera) the translucent card lets rows bleed through.
+  cardOpaque: { backgroundColor: "#121212" },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   headerText: { flex: 1 },
   swatch: {

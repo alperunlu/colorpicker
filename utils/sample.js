@@ -7,6 +7,7 @@ export const DEFAULT_SAMPLE_SIZE = 9;
 // Maps a touch inside a box that shows an image with resizeMode="contain" back
 // to pixel coordinates in the image. Returns null for touches on the letterbox.
 export const viewToImageCoords = (x, y, box, image) => {
+  if (![x, y, box.width, box.height].every(Number.isFinite)) return null;
   const scale = Math.min(box.width / image.width, box.height / image.height);
   const offsetX = (box.width - image.width * scale) / 2;
   const offsetY = (box.height - image.height * scale) / 2;

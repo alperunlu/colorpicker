@@ -160,6 +160,10 @@ describe("viewToImageCoords", () => {
     expect(viewToImageCoords(50, 10, box, image)).toBeNull();
     expect(viewToImageCoords(50, 90, box, image)).toBeNull();
   });
+  test("rejects missing or non-finite coordinates", () => {
+    expect(viewToImageCoords(undefined, 50, box, image)).toBeNull();
+    expect(viewToImageCoords(50, NaN, box, image)).toBeNull();
+  });
   test("maps image corners", () => {
     expect(viewToImageCoords(0, 25, box, image)).toEqual({ x: 0, y: 0 });
   });

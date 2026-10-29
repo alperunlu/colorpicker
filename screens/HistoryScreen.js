@@ -80,6 +80,7 @@ export default function HistoryScreen({
       {selected && (
         <View style={styles.cardWrap}>
           <ColorCard
+            opaque
             rgb={selected.rgb}
             paletteType={paletteType}
             onChangePaletteType={onChangePaletteType}
