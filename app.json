@@ -56,7 +56,19 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
-    ]
+      ],
+      "expo-localization"
+    ],
+    "locales": {
+      "es": "./locales/native/es.json",
+      "pt": "./locales/native/pt.json",
+      "fr": "./locales/native/fr.json",
+      "de": "./locales/native/de.json",
+      "ja": "./locales/native/ja.json",
+      "zh-Hans": "./locales/native/zh-Hans.json",
+      "ko": "./locales/native/ko.json",
+      "vi": "./locales/native/vi.json",
+      "tr": "./locales/native/tr.json"
+    }
   }
 }

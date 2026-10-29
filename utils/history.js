@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const KEY = "colorpicker:v2:saved";
 export const MAX_ITEMS = 200;
 
-// Item shape: { hex, name, savedAt, favorite }. Newest first, one entry per hex.
+// Item shape: { hex, savedAt, favorite }. Newest first, one entry per hex.
 export const loadSaved = async () => {
   try {
     const raw = await AsyncStorage.getItem(KEY);
@@ -40,11 +40,11 @@ export const addToHistory = (items, entry) => {
   return next;
 };
 
-export const toggleFavorite = (items, hex, name) => {
+export const toggleFavorite = (items, hex) => {
   if (items.some((i) => i.hex === hex)) {
     return items.map((i) => (i.hex === hex ? { ...i, favorite: !i.favorite } : i));
   }
-  return [{ hex, name, savedAt: Date.now(), favorite: true }, ...items];
+  return [{ hex, savedAt: Date.now(), favorite: true }, ...items];
 };
 
 export const removeItem = (items, hex) => items.filter((i) => i.hex !== hex);

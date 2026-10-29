@@ -114,13 +114,7 @@ export const contrastInfo = (r, g, b) => {
 const rotate = (hsl, deg) => hslToRgb((hsl.h + deg + 360) % 360, hsl.s, hsl.l);
 const toHex = ({ r, g, b }) => rgbToHex(r, g, b);
 
-export const PALETTE_TYPES = [
-  { id: "analogous", label: "Analogous" },
-  { id: "complementary", label: "Complementary" },
-  { id: "triadic", label: "Triadic" },
-  { id: "tetradic", label: "Tetradic" },
-  { id: "monochromatic", label: "Mono" },
-];
+export const PALETTE_TYPES = ["analogous", "complementary", "triadic", "tetradic", "monochromatic"];
 
 // Each palette is 5 hex strings with the picked color in the middle slot, so
 // the UI can always highlight the source color in the same position.

@@ -7,7 +7,7 @@ import {
   rgbToHex, hexToRgb, rgbToHsl, hslToRgb, rgbToHsv, rgbToCmyk,
   contrastRatio, contrastInfo, generatePalette, buildColor,
 } from "../utils/color";
-import { nearestColorName } from "../utils/colorNames";
+import { nearestColorKey } from "../utils/colorNames";
 import { base64ToBytes, averageRgbFromPngBase64 } from "../utils/pixels";
 import { addToHistory, toggleFavorite, removeItem, MAX_ITEMS } from "../utils/history";
 
@@ -60,9 +60,9 @@ describe("palettes", () => {
 
 describe("color names", () => {
   test("exact and near matches", () => {
-    expect(nearestColorName(255, 0, 0)).toBe("Red");
-    expect(nearestColorName(250, 5, 5)).toBe("Red");
-    expect(nearestColorName(70, 130, 180)).toBe("Steel Blue");
+    expect(nearestColorKey(255, 0, 0)).toBe("Red");
+    expect(nearestColorKey(250, 5, 5)).toBe("Red");
+    expect(nearestColorKey(70, 130, 180)).toBe("SteelBlue");
   });
 });
 
@@ -123,7 +123,7 @@ describe("pixels", () => {
 });
 
 describe("history", () => {
-  const e = (hex, extra = {}) => ({ hex, name: hex, savedAt: 1, favorite: false, ...extra });
+  const e = (hex, extra = {}) => ({ hex, savedAt: 1, favorite: false, ...extra });
   test("dedupes by hex, newest first, keeps favorite flag", () => {
     let items = addToHistory([], e("#111111"));
     items = toggleFavorite(items, "#111111");
@@ -133,7 +133,7 @@ describe("history", () => {
     expect(items[0].favorite).toBe(true);
   });
   test("toggleFavorite adds unknown colors as favorites", () => {
-    expect(toggleFavorite([], "#ABCDEF", "x")[0]).toMatchObject({ hex: "#ABCDEF", favorite: true });
+    expect(toggleFavorite([], "#ABCDEF")[0]).toMatchObject({ hex: "#ABCDEF", favorite: true });
   });
   test("removeItem", () => {
     expect(removeItem([e("#111111"), e("#222222")], "#111111").map((i) => i.hex)).toEqual(["#222222"]);

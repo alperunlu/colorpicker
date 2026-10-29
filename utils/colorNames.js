@@ -1,4 +1,4 @@
-// Nearest-name lookup against the 140 CSS named colors. Works offline.
+// Nearest-name lookup against the 141 CSS named colors. Works offline.
 
 const CSS_COLORS = {
   AliceBlue: "F0F8FF", AntiqueWhite: "FAEBD7", Aqua: "00FFFF", Aquamarine: "7FFFD4", Azure: "F0FFFF",
@@ -34,9 +34,10 @@ const CSS_COLORS = {
   WhiteSmoke: "F5F5F5", Yellow: "FFFF00", YellowGreen: "9ACD32",
 };
 
-const TABLE = Object.entries(CSS_COLORS).map(([name, hex]) => ({
-  // "DarkSlateBlue" -> "Dark Slate Blue"
-  name: name.replace(/([a-z])([A-Z])/g, "$1 $2"),
+export const COLOR_KEYS = Object.keys(CSS_COLORS);
+
+const TABLE = Object.entries(CSS_COLORS).map(([key, hex]) => ({
+  key,
   r: parseInt(hex.slice(0, 2), 16),
   g: parseInt(hex.slice(2, 4), 16),
   b: parseInt(hex.slice(4, 6), 16),
@@ -52,7 +53,9 @@ const distance = (a, b) => {
   return (2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db;
 };
 
-export const nearestColorName = (r, g, b) => {
+// Returns the CSS color key (e.g. "SteelBlue"); the display name comes from the
+// active locale's `colors` table.
+export const nearestColorKey = (r, g, b) => {
   let best = TABLE[0];
   let bestDist = Infinity;
   for (const entry of TABLE) {
@@ -62,5 +65,5 @@ export const nearestColorName = (r, g, b) => {
       best = entry;
     }
   }
-  return best.name;
+  return best.key;
 };

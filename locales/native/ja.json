@@ -1,0 +1,4 @@
+{
+  "NSCameraUsageDescription": "このアプリは、身の回りの色を取得するためにカメラを使用します。",
+  "NSPhotoLibraryUsageDescription": "このアプリでは、ライブラリから写真を選んでその色を読み取ることができます。"
+}

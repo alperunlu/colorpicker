@@ -1,0 +1,4 @@
+{
+  "NSCameraUsageDescription": "Ứng dụng này sử dụng máy ảnh để lấy màu từ thế giới thực.",
+  "NSPhotoLibraryUsageDescription": "Ứng dụng này cho phép bạn chọn ảnh từ thư viện để đọc màu của ảnh."
+}

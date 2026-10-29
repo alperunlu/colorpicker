@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import ColorCard from "../components/ColorCard";
 import { sampleColor, SAMPLE_SIZES } from "../utils/sample";
+import { t } from "../utils/i18n";
 
 export default function CameraScreen({
   sampleSize,
@@ -25,7 +26,7 @@ export default function CameraScreen({
 
   if (!permission) {
     return (
-      <View style={styles.center}><Text style={styles.loadingText}>Loading...</Text></View>
+      <View style={styles.center}><Text style={styles.loadingText}>{t("common.loading")}</Text></View>
     );
   }
 
@@ -36,14 +37,14 @@ export default function CameraScreen({
     const canAskAgain = permission.canAskAgain;
     return (
       <View style={styles.center}>
-        <Text style={styles.message}>Camera permission required to capture colors</Text>
+        <Text style={styles.message}>{t("camera.permissionRequired")}</Text>
         <TouchableOpacity
           style={styles.permissionButton}
           onPress={canAskAgain ? requestPermission : () => Linking.openSettings()}
-          accessibilityLabel={canAskAgain ? "Grant camera permission" : "Open Settings to grant camera permission"}
+          accessibilityLabel={canAskAgain ? t("camera.grantPermissionA11y") : t("camera.openSettingsA11y")}
           accessibilityRole="button"
         >
-          <Text style={styles.buttonText}>{canAskAgain ? "Continue" : "Open Settings"}</Text>
+          <Text style={styles.buttonText}>{canAskAgain ? t("camera.continue") : t("camera.openSettings")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -51,7 +52,7 @@ export default function CameraScreen({
 
   const pickColor = async () => {
     if (!cameraRef.current || !isCameraReady) {
-      Alert.alert("Camera Not Ready", "Please wait a moment and try again.");
+      Alert.alert(t("camera.notReadyTitle"), t("camera.notReadyMessage"));
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -69,7 +70,7 @@ export default function CameraScreen({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error picking color:", error);
-      Alert.alert("Error", "Failed to capture color. Please try again.");
+      Alert.alert(t("common.error"), t("camera.captureFailed"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,7 @@ export default function CameraScreen({
         onCameraReady={() => setIsCameraReady(true)}
       />
 
-      <View style={styles.crosshair} pointerEvents="none" accessibilityLabel="Color picker crosshair">
+      <View style={styles.crosshair} pointerEvents="none" accessibilityLabel={t("camera.crosshairA11y")}>
         <View style={styles.crossLineVertical} />
         <View style={styles.crossLineHorizontal} />
         <View style={styles.centerDot} />
@@ -106,19 +107,19 @@ export default function CameraScreen({
         <TouchableOpacity
           style={[styles.iconButton, torch && styles.iconButtonActive]}
           onPress={() => { setTorch((t) => !t); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          accessibilityLabel={torch ? "Turn torch off" : "Turn torch on"}
+          accessibilityLabel={torch ? t("camera.turnTorchOffA11y") : t("camera.turnTorchOnA11y")}
           accessibilityRole="button"
         >
-          <Text style={styles.iconButtonText}>{torch ? "Torch On" : "Torch Off"}</Text>
+          <Text style={styles.iconButtonText} numberOfLines={1} adjustsFontSizeToFit>{torch ? t("camera.torchOn") : t("camera.torchOff")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconButton}
           onPress={cycleSampleSize}
-          accessibilityLabel={`Sample area ${sampleSize} by ${sampleSize} pixels. Tap to change.`}
+          accessibilityLabel={t("camera.areaA11y", { size: sampleSize })}
           accessibilityRole="button"
         >
-          <Text style={styles.iconButtonText}>Area {sampleSize}×{sampleSize}</Text>
+          <Text style={styles.iconButtonText} numberOfLines={1} adjustsFontSizeToFit>{t("camera.area", { size: sampleSize })}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -127,10 +128,10 @@ export default function CameraScreen({
             setFacing((f) => (f === "back" ? "front" : "back"));
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
-          accessibilityLabel="Flip camera"
+          accessibilityLabel={t("camera.flipA11y")}
           accessibilityRole="button"
         >
-          <Text style={styles.iconButtonText}>Flip</Text>
+          <Text style={styles.iconButtonText} numberOfLines={1} adjustsFontSizeToFit>{t("camera.flip")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -152,11 +153,11 @@ export default function CameraScreen({
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={pickColor}
           disabled={loading}
-          accessibilityLabel="Pick color from camera"
+          accessibilityLabel={t("camera.pickColorA11y")}
           accessibilityRole="button"
           accessibilityState={{ disabled: loading }}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Pick Color</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t("camera.pickColor")}</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -174,10 +175,12 @@ const styles = StyleSheet.create({
   },
   topButtons: {
     position: "absolute", top: 16, left: 20, right: 20,
-    flexDirection: "row", justifyContent: "space-between",
+    flexDirection: "row", justifyContent: "space-between", gap: 8,
   },
+  // flexShrink keeps long translations from pushing the row off narrow screens.
   iconButton: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)", paddingVertical: 10, paddingHorizontal: 16,
+    flexShrink: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)", paddingVertical: 10, paddingHorizontal: 14,
     borderRadius: 20, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.25)",
   },
   iconButtonActive: { backgroundColor: "rgba(255, 200, 0, 0.35)", borderColor: "rgba(255, 200, 0, 0.8)" },

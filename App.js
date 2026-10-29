@@ -4,15 +4,15 @@ import { StatusBar } from "expo-status-bar";
 import CameraScreen from "./screens/CameraScreen";
 import GalleryScreen from "./screens/GalleryScreen";
 import HistoryScreen from "./screens/HistoryScreen";
-import { rgbToHex, hexToRgb } from "./utils/color";
-import { nearestColorName } from "./utils/colorNames";
+import { rgbToHex } from "./utils/color";
+import { t } from "./utils/i18n";
 import { DEFAULT_SAMPLE_SIZE } from "./utils/sample";
 import { loadSaved, persistSaved, addToHistory, toggleFavorite, removeItem } from "./utils/history";
 
 const TABS = [
-  { id: "camera", label: "Camera" },
-  { id: "gallery", label: "Photo" },
-  { id: "history", label: "History" },
+  { id: "camera", labelKey: "tabs.camera" },
+  { id: "gallery", labelKey: "tabs.photo" },
+  { id: "history", labelKey: "tabs.history" },
 ];
 
 export default function App() {
@@ -43,7 +43,6 @@ export default function App() {
     setItems((current) =>
       addToHistory(current, {
         hex: hexOf(picked),
-        name: nearestColorName(picked.r, picked.g, picked.b),
         savedAt: Date.now(),
         favorite: false,
       })
@@ -51,8 +50,7 @@ export default function App() {
   };
 
   const handleToggleFavorite = (hex) => {
-    const { r, g, b } = hexToRgb(hex);
-    setItems((current) => toggleFavorite(current, hex, nearestColorName(r, g, b)));
+    setItems((current) => toggleFavorite(current, hex));
   };
 
   const shared = { paletteType, onChangePaletteType: setPaletteType };
@@ -88,16 +86,16 @@ export default function App() {
       </View>
 
       <View style={styles.tabBar}>
-        {TABS.map((t) => (
+        {TABS.map((item) => (
           <TouchableOpacity
-            key={t.id}
+            key={item.id}
             style={styles.tab}
-            onPress={() => setTab(t.id)}
+            onPress={() => setTab(item.id)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t.id }}
-            accessibilityLabel={t.label}
+            accessibilityState={{ selected: tab === item.id }}
+            accessibilityLabel={t(item.labelKey)}
           >
-            <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
+            <Text style={[styles.tabText, tab === item.id && styles.tabTextActive]}>{t(item.labelKey)}</Text>
           </TouchableOpacity>
         ))}
       </View>

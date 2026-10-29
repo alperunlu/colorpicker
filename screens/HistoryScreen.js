@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import ColorCard from "../components/ColorCard";
 import { hexToRgb } from "../utils/color";
+import { t, nearestColorLabel } from "../utils/i18n";
 
 export default function HistoryScreen({
   items,
@@ -18,9 +19,9 @@ export default function HistoryScreen({
   const selectedItem = selected && items.find((i) => i.hex === selected.hex);
 
   const confirmClear = () => {
-    Alert.alert("Clear history?", "Favorites are kept. This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Clear", style: "destructive", onPress: onClearNonFavorites },
+    Alert.alert(t("history.clearTitle"), t("history.clearMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("history.clear"), style: "destructive", onPress: onClearNonFavorites },
     ]);
   };
 
@@ -35,13 +36,13 @@ export default function HistoryScreen({
             accessibilityRole="button"
             accessibilityState={{ selected: filter === f }}
           >
-            <Text style={styles.chipText}>{f === "all" ? "All" : "Favorites"}</Text>
+            <Text style={styles.chipText}>{f === "all" ? t("history.all") : t("history.favorites")}</Text>
           </TouchableOpacity>
         ))}
         <View style={styles.flex} />
         {items.some((i) => !i.favorite) && (
-          <TouchableOpacity onPress={confirmClear} accessibilityRole="button" accessibilityLabel="Clear history">
-            <Text style={styles.clear}>Clear</Text>
+          <TouchableOpacity onPress={confirmClear} accessibilityRole="button" accessibilityLabel={t("history.clearA11y")}>
+            <Text style={styles.clear}>{t("history.clear")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -52,24 +53,28 @@ export default function HistoryScreen({
         contentContainerStyle={[styles.list, selected && { paddingBottom: 320 }]}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {filter === "favorites" ? "No favorites yet. Tap ☆ on a color to keep it here." : "Colors you pick will show up here."}
+            {filter === "favorites" ? t("history.emptyFavorites") : t("history.emptyAll")}
           </Text>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const { r, g, b } = hexToRgb(item.hex);
+          const name = nearestColorLabel(r, g, b);
+          return (
           <TouchableOpacity
             style={[styles.row, selected?.hex === item.hex && styles.rowActive]}
             onPress={() => setSelected({ hex: item.hex, rgb: hexToRgb(item.hex) })}
             accessibilityRole="button"
-            accessibilityLabel={`${item.name} ${item.hex}`}
+            accessibilityLabel={`${name} ${item.hex}`}
           >
             <View style={[styles.swatch, { backgroundColor: item.hex }]} />
             <View style={styles.flex}>
               <Text style={styles.hex}>{item.hex}</Text>
-              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.name}>{name}</Text>
             </View>
             {item.favorite && <Text style={styles.star}>★</Text>}
           </TouchableOpacity>
-        )}
+          );
+        }}
       />
 
       {selected && (

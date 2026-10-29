@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensio
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import { buildColor, contrastInfo, PALETTE_TYPES, hexToRgb } from "../utils/color";
-import { nearestColorName } from "../utils/colorNames";
+import { t, nearestColorLabel, formatDecimal } from "../utils/i18n";
 
 // Details panel for one picked color. Controlled: the parent owns the rgb value
 // and the palette type; picking a palette swatch calls onChangeRgb.
@@ -23,7 +23,7 @@ export default function ColorCard({
   useEffect(() => () => clearTimeout(copiedTimerRef.current), []);
 
   const color = buildColor(rgb.r, rgb.g, rgb.b, paletteType);
-  const name = nearestColorName(rgb.r, rgb.g, rgb.b);
+  const name = nearestColorLabel(rgb.r, rgb.g, rgb.b);
   const contrast = contrastInfo(rgb.r, rgb.g, rgb.b);
 
   const copy = async (label, value) => {
@@ -45,7 +45,7 @@ export default function ColorCard({
     ["CMYK", `cmyk(${color.cmyk.c}%, ${color.cmyk.m}%, ${color.cmyk.y}%, ${color.cmyk.k}%)`, `${color.cmyk.c}%, ${color.cmyk.m}%, ${color.cmyk.y}%, ${color.cmyk.k}%`],
   ];
 
-  const fmt = (c) => `${c.ratio.toFixed(1)}:1 ${c.level}`;
+  const fmt = (c) => `${formatDecimal(c.ratio)}:1 ${c.level === "Fail" ? t("card.fail") : c.level}`;
 
   return (
     <View style={[styles.card, { maxHeight: height * 0.6 }]}>
@@ -55,20 +55,20 @@ export default function ColorCard({
           <View style={styles.headerText}>
             <TouchableOpacity
               onPress={() => copy("HEX", color.hex)}
-              accessibilityLabel={`Copy hex value ${color.hex}`}
+              accessibilityLabel={t("card.copyHexA11y", { hex: color.hex })}
               accessibilityRole="button"
             >
               <Text style={styles.hex}>{color.hex}</Text>
             </TouchableOpacity>
-            <Text style={styles.name} accessibilityLabel={`Closest color name ${name}`}>{name}</Text>
+            <Text style={styles.name} accessibilityLabel={t("card.closestNameA11y", { name })}>{name}</Text>
           </View>
           {copiedLabel && (
-            <View style={styles.badge}><Text style={styles.badgeText}>{copiedLabel} copied</Text></View>
+            <View style={styles.badge}><Text style={styles.badgeText}>{t("card.copied", { label: copiedLabel })}</Text></View>
           )}
           <TouchableOpacity
             onPress={onToggleFavorite}
             style={styles.starButton}
-            accessibilityLabel={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            accessibilityLabel={isFavorite ? t("card.removeFavoriteA11y") : t("card.addFavoriteA11y")}
             accessibilityRole="button"
           >
             <Text style={[styles.star, isFavorite && styles.starActive]}>{isFavorite ? "★" : "☆"}</Text>
@@ -79,28 +79,28 @@ export default function ColorCard({
           <TouchableOpacity
             key={label}
             onPress={() => copy(label, copyValue)}
-            accessibilityLabel={`Copy ${label} value`}
+            accessibilityLabel={t("card.copyValueA11y", { label })}
             accessibilityRole="button"
           >
             <Text style={styles.info}>{label}  {display}</Text>
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.info} accessibilityLabel="Text contrast">
-          Contrast  white {fmt(contrast.white)}  ·  black {fmt(contrast.black)}
+        <Text style={styles.info} accessibilityLabel={t("card.contrastA11y")}>
+          {t("card.contrast", { white: fmt(contrast.white), black: fmt(contrast.black) })}
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
-          {PALETTE_TYPES.map((t) => (
+          {PALETTE_TYPES.map((id) => (
             <TouchableOpacity
-              key={t.id}
-              onPress={() => onChangePaletteType(t.id)}
-              style={[styles.chip, paletteType === t.id && styles.chipActive]}
-              accessibilityLabel={`${t.label} palette`}
+              key={id}
+              onPress={() => onChangePaletteType(id)}
+              style={[styles.chip, paletteType === id && styles.chipActive]}
+              accessibilityLabel={t("card.paletteA11y", { type: t(`palette.${id}`) })}
               accessibilityRole="button"
-              accessibilityState={{ selected: paletteType === t.id }}
+              accessibilityState={{ selected: paletteType === id }}
             >
-              <Text style={styles.chipText}>{t.label}</Text>
+              <Text style={styles.chipText}>{t(`palette.${id}`)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -114,16 +114,16 @@ export default function ColorCard({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               style={[styles.paletteColor, { backgroundColor: hex }, hex === color.hex && styles.paletteSelected]}
-              accessibilityLabel={`Select color ${hex}`}
+              accessibilityLabel={t("card.selectColorA11y", { hex })}
               accessibilityRole="button"
             />
           ))}
         </View>
 
-        <Text style={styles.hint}>Tap a value to copy it</Text>
+        <Text style={styles.hint}>{t("card.hint")}</Text>
         {onDelete && (
-          <TouchableOpacity onPress={onDelete} accessibilityRole="button" accessibilityLabel="Delete from history">
-            <Text style={styles.delete}>Delete</Text>
+          <TouchableOpacity onPress={onDelete} accessibilityRole="button" accessibilityLabel={t("card.deleteA11y")}>
+            <Text style={styles.delete}>{t("card.delete")}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

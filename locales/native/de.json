@@ -1,0 +1,4 @@
+{
+  "NSCameraUsageDescription": "Diese App verwendet die Kamera, um Farben aus der realen Welt zu erfassen.",
+  "NSPhotoLibraryUsageDescription": "Mit dieser App kannst du ein Foto aus deiner Mediathek auswählen, um dessen Farben auszulesen."
+}

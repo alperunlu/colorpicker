@@ -5,6 +5,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
 import ColorCard from "../components/ColorCard";
 import { sampleColor, viewToImageCoords } from "../utils/sample";
+import { t } from "../utils/i18n";
 
 export default function GalleryScreen({
   sampleSize,
@@ -39,7 +40,7 @@ export default function GalleryScreen({
       setMarker(null);
     } catch (error) {
       console.error("Error choosing photo:", error);
-      Alert.alert("Error", "Could not open that photo.");
+      Alert.alert(t("common.error"), t("gallery.openFailed"));
     } finally {
       setBusy(false);
     }
@@ -58,7 +59,7 @@ export default function GalleryScreen({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error sampling color:", error);
-      Alert.alert("Error", "Failed to read the color. Please try again.");
+      Alert.alert(t("common.error"), t("gallery.readFailed"));
     } finally {
       setBusy(false);
     }
@@ -71,7 +72,7 @@ export default function GalleryScreen({
           style={styles.flex}
           onPress={handlePress}
           onLayout={(e) => setBox(e.nativeEvent.layout)}
-          accessibilityLabel="Selected photo. Tap anywhere to pick a color."
+          accessibilityLabel={t("gallery.photoA11y")}
         >
           <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" pointerEvents="none" />
           {marker && (
@@ -83,8 +84,8 @@ export default function GalleryScreen({
         </Pressable>
       ) : (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Pick colors from a photo</Text>
-          <Text style={styles.emptyText}>Choose a picture, then tap anywhere on it to read that color.</Text>
+          <Text style={styles.emptyTitle}>{t("gallery.emptyTitle")}</Text>
+          <Text style={styles.emptyText}>{t("gallery.emptyText")}</Text>
         </View>
       )}
 
@@ -106,10 +107,10 @@ export default function GalleryScreen({
           style={[styles.button, busy && styles.buttonDisabled]}
           onPress={choosePhoto}
           disabled={busy}
-          accessibilityLabel="Choose a photo from your library"
+          accessibilityLabel={t("gallery.choosePhotoA11y")}
           accessibilityRole="button"
         >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{image ? "Change Photo" : "Choose Photo"}</Text>}
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{image ? t("gallery.changePhoto") : t("gallery.choosePhoto")}</Text>}
         </TouchableOpacity>
       </View>
     </View>
