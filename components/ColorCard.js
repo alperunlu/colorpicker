@@ -7,6 +7,8 @@ import { t, nearestColorLabel, formatDecimal } from "../utils/i18n";
 
 // Details panel for one picked color. Controlled: the parent owns the rgb value
 // and the palette type; picking a palette swatch calls onChangeRgb.
+// `collapsible` cards (over the camera / photo) start as a one-line summary and
+// stay short when expanded, so they never cover the crosshair.
 export default function ColorCard({
   rgb,
   paletteType,
@@ -16,9 +18,12 @@ export default function ColorCard({
   onToggleFavorite,
   onDelete,
   opaque,
+  collapsible,
+  onClose,
 }) {
   const { height } = useWindowDimensions();
   const [copiedLabel, setCopiedLabel] = useState(null);
+  const [expanded, setExpanded] = useState(!collapsible);
   const copiedTimerRef = useRef(null);
 
   useEffect(() => () => clearTimeout(copiedTimerRef.current), []);
@@ -49,7 +54,7 @@ export default function ColorCard({
   const fmt = (c) => `${formatDecimal(c.ratio)}:1 ${c.level === "Fail" ? t("card.fail") : c.level}`;
 
   return (
-    <View style={[styles.card, opaque && styles.cardOpaque, { maxHeight: height * 0.6 }]}>
+    <View style={[styles.card, opaque && styles.cardOpaque, { maxHeight: height * (collapsible ? 0.33 : 0.6) }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={[styles.swatch, { backgroundColor: color.hex }]} />
@@ -74,58 +79,83 @@ export default function ColorCard({
           >
             <Text style={[styles.star, isFavorite && styles.starActive]}>{isFavorite ? "★" : "☆"}</Text>
           </TouchableOpacity>
-        </View>
-
-        {rows.map(([label, copyValue, display]) => (
-          <TouchableOpacity
-            key={label}
-            onPress={() => copy(label, copyValue)}
-            accessibilityLabel={t("card.copyValueA11y", { label })}
-            accessibilityRole="button"
-          >
-            <Text style={styles.info}>{label}  {display}</Text>
-          </TouchableOpacity>
-        ))}
-
-        <Text style={styles.info} accessibilityLabel={t("card.contrastA11y")}>
-          {t("card.contrast", { white: fmt(contrast.white), black: fmt(contrast.black) })}
-        </Text>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
-          {PALETTE_TYPES.map((id) => (
+          {collapsible && (
             <TouchableOpacity
-              key={id}
-              onPress={() => onChangePaletteType(id)}
-              style={[styles.chip, paletteType === id && styles.chipActive]}
-              accessibilityLabel={t("card.paletteA11y", { type: t(`palette.${id}`) })}
+              onPress={() => setExpanded((e) => !e)}
+              style={styles.iconButton}
+              accessibilityLabel={expanded ? t("card.hideDetailsA11y") : t("card.showDetailsA11y")}
               accessibilityRole="button"
-              accessibilityState={{ selected: paletteType === id }}
+              accessibilityState={{ expanded }}
             >
-              <Text style={styles.chipText}>{t(`palette.${id}`)}</Text>
+              <Text style={styles.icon}>{expanded ? "▴" : "▾"}</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.palette}>
-          {color.palette.map((hex, i) => (
+          )}
+          {onClose && (
             <TouchableOpacity
-              key={i}
-              onPress={() => {
-                onChangeRgb(hexToRgb(hex));
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={[styles.paletteColor, { backgroundColor: hex }, hex === color.hex && styles.paletteSelected]}
-              accessibilityLabel={t("card.selectColorA11y", { hex })}
+              onPress={onClose}
+              style={styles.iconButton}
+              accessibilityLabel={t("card.closeA11y")}
               accessibilityRole="button"
-            />
-          ))}
+            >
+              <Text style={styles.icon}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <Text style={styles.hint}>{t("card.hint")}</Text>
-        {onDelete && (
-          <TouchableOpacity onPress={onDelete} accessibilityRole="button" accessibilityLabel={t("card.deleteA11y")}>
-            <Text style={styles.delete}>{t("card.delete")}</Text>
-          </TouchableOpacity>
+        {expanded && (
+          <View style={styles.details}>
+            {rows.map(([label, copyValue, display]) => (
+              <TouchableOpacity
+                key={label}
+                onPress={() => copy(label, copyValue)}
+                accessibilityLabel={t("card.copyValueA11y", { label })}
+                accessibilityRole="button"
+              >
+                <Text style={styles.info}>{label}  {display}</Text>
+              </TouchableOpacity>
+            ))}
+
+            <Text style={styles.info} accessibilityLabel={t("card.contrastA11y")}>
+              {t("card.contrast", { white: fmt(contrast.white), black: fmt(contrast.black) })}
+            </Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
+              {PALETTE_TYPES.map((id) => (
+                <TouchableOpacity
+                  key={id}
+                  onPress={() => onChangePaletteType(id)}
+                  style={[styles.chip, paletteType === id && styles.chipActive]}
+                  accessibilityLabel={t("card.paletteA11y", { type: t(`palette.${id}`) })}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: paletteType === id }}
+                >
+                  <Text style={styles.chipText}>{t(`palette.${id}`)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.palette}>
+              {color.palette.map((hex, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => {
+                    onChangeRgb(hexToRgb(hex));
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  style={[styles.paletteColor, { backgroundColor: hex }, hex === color.hex && styles.paletteSelected]}
+                  accessibilityLabel={t("card.selectColorA11y", { hex })}
+                  accessibilityRole="button"
+                />
+              ))}
+            </View>
+
+            <Text style={styles.hint}>{t("card.hint")}</Text>
+            {onDelete && (
+              <TouchableOpacity onPress={onDelete} accessibilityRole="button" accessibilityLabel={t("card.deleteA11y")}>
+                <Text style={styles.delete}>{t("card.delete")}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -142,7 +172,8 @@ const styles = StyleSheet.create({
   },
   // Over a list (not the camera) the translucent card lets rows bleed through.
   cardOpaque: { backgroundColor: "#121212" },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  header: { flexDirection: "row", alignItems: "center" },
+  details: { marginTop: 10 },
   headerText: { flex: 1 },
   swatch: {
     width: 52, height: 52, borderRadius: 10, marginRight: 12,
@@ -156,6 +187,8 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
   starButton: { paddingHorizontal: 8, paddingVertical: 4 },
+  iconButton: { paddingHorizontal: 8, paddingVertical: 4, marginLeft: 2 },
+  icon: { fontSize: 22, color: "rgba(255, 255, 255, 0.75)", fontWeight: "600" },
   star: { fontSize: 26, color: "rgba(255, 255, 255, 0.6)" },
   starActive: { color: "#FFC800" },
   info: { fontSize: 13, color: "rgba(255, 255, 255, 0.8)", marginBottom: 4, fontVariant: ["tabular-nums"] },

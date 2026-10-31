@@ -58,6 +58,9 @@ export default {
     hint: "点按数值即可复制",
     delete: "删除",
     deleteA11y: "从历史中删除",
+    showDetailsA11y: "显示详情",
+    hideDetailsA11y: "隐藏详情",
+    closeA11y: "关闭",
   },
   palette: {
     analogous: "类似色",

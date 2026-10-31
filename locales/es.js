@@ -57,6 +57,9 @@ export default {
     hint: "Toca un valor para copiarlo",
     delete: "Eliminar",
     deleteA11y: "Eliminar del historial",
+    showDetailsA11y: "Mostrar detalles",
+    hideDetailsA11y: "Ocultar detalles",
+    closeA11y: "Cerrar",
   },
   palette: {
     analogous: "Análoga",

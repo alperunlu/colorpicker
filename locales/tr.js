@@ -57,6 +57,9 @@ export default {
     hint: "Kopyalamak için bir değere dokunun",
     delete: "Sil",
     deleteA11y: "Geçmişten sil",
+    showDetailsA11y: "Ayrıntıları göster",
+    hideDetailsA11y: "Ayrıntıları gizle",
+    closeA11y: "Kapat",
   },
   palette: {
     analogous: "Analog",

@@ -57,6 +57,9 @@ export default {
     hint: "値をタップするとコピーします",
     delete: "削除",
     deleteA11y: "履歴から削除",
+    showDetailsA11y: "詳細を表示",
+    hideDetailsA11y: "詳細を隠す",
+    closeA11y: "閉じる",
   },
   palette: {
     analogous: "類似色",

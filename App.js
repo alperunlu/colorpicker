@@ -64,6 +64,7 @@ export default function App() {
     onChangeRgb: setRgb,
     isFavorite: currentIsFavorite,
     onToggleFavorite: () => handleToggleFavorite(currentHex),
+    onClose: () => setRgb(null),
   };
 
   return (

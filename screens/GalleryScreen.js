@@ -16,6 +16,7 @@ export default function GalleryScreen({
   onChangePaletteType,
   isFavorite,
   onToggleFavorite,
+  onClose,
 }) {
   const [image, setImage] = useState(null); // { uri, width, height }
   const [box, setBox] = useState(null);
@@ -98,6 +99,8 @@ export default function GalleryScreen({
             onChangeRgb={onChangeRgb}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
+            collapsible
+            onClose={onClose}
           />
         </View>
       )}

@@ -16,6 +16,7 @@ export default function CameraScreen({
   onChangePaletteType,
   isFavorite,
   onToggleFavorite,
+  onClose,
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
@@ -144,6 +145,8 @@ export default function CameraScreen({
             onChangeRgb={onChangeRgb}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
+            collapsible
+            onClose={onClose}
           />
         </View>
       )}

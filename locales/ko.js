@@ -57,6 +57,9 @@ export default {
     hint: "값을 탭하면 복사됩니다",
     delete: "삭제",
     deleteA11y: "기록에서 삭제",
+    showDetailsA11y: "자세히 보기",
+    hideDetailsA11y: "자세히 숨기기",
+    closeA11y: "닫기",
   },
   palette: {
     analogous: "유사색",

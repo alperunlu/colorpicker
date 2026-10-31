@@ -59,6 +59,9 @@ export default {
     hint: "Tap a value to copy it",
     delete: "Delete",
     deleteA11y: "Delete from history",
+    showDetailsA11y: "Show details",
+    hideDetailsA11y: "Hide details",
+    closeA11y: "Close",
   },
   palette: {
     analogous: "Analogous",

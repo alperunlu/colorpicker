@@ -57,6 +57,9 @@ export default {
     hint: "Chạm vào một giá trị để sao chép",
     delete: "Xóa",
     deleteA11y: "Xóa khỏi lịch sử",
+    showDetailsA11y: "Hiện chi tiết",
+    hideDetailsA11y: "Ẩn chi tiết",
+    closeA11y: "Đóng",
   },
   palette: {
     analogous: "Tương đồng",
