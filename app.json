@@ -57,7 +57,8 @@
           "microphonePermission": false
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "./plugins/withPodsDeploymentTarget"
     ],
     "locales": {
       "es": "./locales/native/es.json",
