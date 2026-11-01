@@ -1,27 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import CameraScreen from "./screens/CameraScreen";
 import GalleryScreen from "./screens/GalleryScreen";
 import HistoryScreen from "./screens/HistoryScreen";
 import { rgbToHex } from "./utils/color";
 import { t } from "./utils/i18n";
-import { DEFAULT_SAMPLE_SIZE } from "./utils/sample";
 import { loadSaved, persistSaved, addToHistory, toggleFavorite, removeItem } from "./utils/history";
 
-const TABS = [
-  { id: "camera", labelKey: "tabs.camera" },
-  { id: "gallery", labelKey: "tabs.photo" },
-  { id: "history", labelKey: "tabs.history" },
-];
-
 export default function App() {
-  const [tab, setTab] = useState("camera");
-  const [rgb, setRgb] = useState(null); // color shown in the Camera / Photo tabs
+  const [screen, setScreen] = useState("camera"); // "camera" | "gallery" | "history"
+  const [returnTo, setReturnTo] = useState("camera"); // where History's back button goes
+  const [rgb, setRgb] = useState(null); // color shown on the Camera / Photo screens
+  const [photo, setPhoto] = useState(null); // chosen library photo, kept across tab switches
+  const [busy, setBusy] = useState(false);
   const [paletteType, setPaletteType] = useState("analogous");
-  const [sampleSize, setSampleSize] = useState(DEFAULT_SAMPLE_SIZE);
   const [items, setItems] = useState([]);
   const loadedRef = useRef(false);
+  const cameraRef = useRef(null);
+  const galleryRef = useRef(null);
 
   useEffect(() => {
     loadSaved().then((saved) => {
@@ -53,32 +50,65 @@ export default function App() {
     setItems((current) => toggleFavorite(current, hex));
   };
 
-  const shared = { paletteType, onChangePaletteType: setPaletteType };
+  const openHistory = () => {
+    setReturnTo(screen);
+    setScreen("history");
+  };
+
+  const switchTo = (next) => {
+    if (busy || next === screen) return;
+    setScreen(next);
+  };
+
+  // The center button is the current screen's main action.
+  const primary = screen === "camera"
+    ? { label: t("camera.pickColor"), a11y: t("camera.pickColorA11y"), run: () => cameraRef.current?.pick() }
+    : {
+        label: photo ? t("gallery.changePhoto") : t("gallery.choosePhoto"),
+        a11y: t("gallery.choosePhotoA11y"),
+        run: () => galleryRef.current?.choosePhoto(),
+      };
+
   const currentHex = rgb ? hexOf(rgb) : null;
-  const currentIsFavorite = !!items.find((i) => i.hex === currentHex)?.favorite;
   const pickerProps = {
-    ...shared,
-    sampleSize,
     rgb,
     onPick: handlePick,
+    onBusyChange: setBusy,
+    onOpenHistory: openHistory,
     onChangeRgb: setRgb,
-    isFavorite: currentIsFavorite,
+    paletteType,
+    onChangePaletteType: setPaletteType,
+    isFavorite: !!items.find((i) => i.hex === currentHex)?.favorite,
     onToggleFavorite: () => handleToggleFavorite(currentHex),
     onClose: () => setRgb(null),
   };
+
+  const tab = (id, labelKey) => (
+    <TouchableOpacity
+      style={styles.tab}
+      onPress={() => switchTo(id)}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: screen === id }}
+      accessibilityLabel={t(labelKey)}
+    >
+      <Text style={[styles.tabText, screen === id && styles.tabTextActive]} numberOfLines={1}>{t(labelKey)}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <View style={styles.content}>
-        {tab === "camera" && (
-          <CameraScreen {...pickerProps} onChangeSampleSize={setSampleSize} />
+        {screen === "camera" && <CameraScreen ref={cameraRef} {...pickerProps} />}
+        {screen === "gallery" && (
+          <GalleryScreen ref={galleryRef} {...pickerProps} image={photo} onImageChange={setPhoto} />
         )}
-        {tab === "gallery" && <GalleryScreen {...pickerProps} />}
-        {tab === "history" && (
+        {screen === "history" && (
           <HistoryScreen
-            {...shared}
             items={items}
+            paletteType={paletteType}
+            onChangePaletteType={setPaletteType}
+            onBack={() => setScreen(returnTo)}
             onToggleFavorite={handleToggleFavorite}
             onDelete={(hex) => setItems((current) => removeItem(current, hex))}
             onClearNonFavorites={() => setItems((current) => current.filter((i) => i.favorite))}
@@ -86,20 +116,26 @@ export default function App() {
         )}
       </View>
 
-      <View style={styles.tabBar}>
-        {TABS.map((item) => (
+      {screen !== "history" && (
+        <View style={styles.bottomBar}>
+          {tab("camera", "tabs.camera")}
           <TouchableOpacity
-            key={item.id}
-            style={styles.tab}
-            onPress={() => setTab(item.id)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === item.id }}
-            accessibilityLabel={t(item.labelKey)}
+            style={[styles.primary, busy && styles.primaryBusy]}
+            onPress={primary.run}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={primary.a11y}
+            accessibilityState={{ disabled: busy }}
           >
-            <Text style={[styles.tabText, tab === item.id && styles.tabTextActive]}>{t(item.labelKey)}</Text>
+            {busy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryText} numberOfLines={1} adjustsFontSizeToFit>{primary.label}</Text>
+            )}
           </TouchableOpacity>
-        ))}
-      </View>
+          {tab("gallery", "tabs.photo")}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -107,11 +143,17 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#000" },
   content: { flex: 1 },
-  tabBar: {
-    flexDirection: "row", borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.15)",
-    backgroundColor: "#000",
+  bottomBar: {
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.15)", backgroundColor: "#000",
   },
-  tab: { flex: 1, paddingVertical: 14, alignItems: "center" },
+  tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
   tabText: { color: "rgba(255, 255, 255, 0.5)", fontSize: 14, fontWeight: "600" },
   tabTextActive: { color: "#fff" },
+  primary: {
+    flex: 1.6, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", paddingHorizontal: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.15)", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.4)",
+  },
+  primaryBusy: { opacity: 0.6 },
+  primaryText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

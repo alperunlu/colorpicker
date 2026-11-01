@@ -4,13 +4,12 @@ A real-world color picker app built with Expo. Point your camera at any object, 
 
 ## Features
 
-- Pick colors from the camera or from any photo in your library (tap anywhere on the photo)
+- Pick colors from the camera or from any photo in your library (tap anywhere on the photo); each pick averages a 9×9 pixel area to smooth out sensor noise
 - HEX, RGB, HSL, HSV, and CMYK values — tap any value to copy it
 - Nearest color name (offline, CSS named colors)
 - WCAG contrast ratio against white and black text
 - Palettes: analogous, complementary, triadic, tetradic, monochromatic
 - History of picked colors, with favorites (kept across launches)
-- Adjustable sample area (1×1, 9×9, 25×25 pixels) to smooth out sensor noise
 - Torch toggle for low-light picking, front/back camera toggle
 
 ## Tech Stack

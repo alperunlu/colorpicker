@@ -2,7 +2,7 @@ import i18n, { t, colorName, nearestColorLabel, formatDecimal } from "../utils/i
 
 test("defaults to English under the test locale", () => {
   expect(t("tabs.camera")).toBe("Camera");
-  expect(t("camera.area", { size: 9 })).toBe("Area 9×9");
+  expect(t("card.copied", { label: "HEX" })).toBe("HEX copied");
   expect(nearestColorLabel(70, 130, 180)).toBe("Steel Blue");
   expect(colorName("RebeccaPurple")).toBe("Rebecca Purple");
 });

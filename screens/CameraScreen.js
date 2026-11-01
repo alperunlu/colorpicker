@@ -1,29 +1,65 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from "react-native";
+import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import ColorCard from "../components/ColorCard";
-import { sampleColor, SAMPLE_SIZES } from "../utils/sample";
+import { sampleColor } from "../utils/sample";
 import { t } from "../utils/i18n";
 
-export default function CameraScreen({
-  sampleSize,
-  onChangeSampleSize,
+// The capture button lives in the app's bottom bar; it calls `pick()` on this
+// screen through a ref. `onBusyChange` lets the bar show progress.
+const CameraScreen = forwardRef(function CameraScreen({
   rgb,
   onPick,
+  onBusyChange,
+  onOpenHistory,
   onChangeRgb,
   paletteType,
   onChangePaletteType,
   isFavorite,
   onToggleFavorite,
   onClose,
-}) {
+}, ref) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [loading, setLoading] = useState(false);
   const [facing, setFacing] = useState("back");
   const [torch, setTorch] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef(null);
+  const busyRef = useRef(false);
+
+  const setBusy = (busy) => {
+    busyRef.current = busy;
+    onBusyChange?.(busy);
+  };
+
+  const pick = async () => {
+    if (busyRef.current) return;
+    if (!permission?.granted) return;
+    if (!cameraRef.current || !isCameraReady) {
+      Alert.alert(t("camera.notReadyTitle"), t("camera.notReadyMessage"));
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBusy(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 1, shutterSound: false });
+      const picked = await sampleColor(
+        photo.uri,
+        { width: photo.width, height: photo.height },
+        photo.width / 2,
+        photo.height / 2
+      );
+      onPick(picked);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error("Error picking color:", error);
+      Alert.alert(t("common.error"), t("camera.captureFailed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ pick }));
 
   if (!permission) {
     return (
@@ -51,38 +87,6 @@ export default function CameraScreen({
     );
   }
 
-  const pickColor = async () => {
-    if (!cameraRef.current || !isCameraReady) {
-      Alert.alert(t("camera.notReadyTitle"), t("camera.notReadyMessage"));
-      return;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setLoading(true);
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1, shutterSound: false });
-      const picked = await sampleColor(
-        photo.uri,
-        { width: photo.width, height: photo.height },
-        photo.width / 2,
-        photo.height / 2,
-        sampleSize
-      );
-      onPick(picked);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.error("Error picking color:", error);
-      Alert.alert(t("common.error"), t("camera.captureFailed"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cycleSampleSize = () => {
-    const next = SAMPLE_SIZES[(SAMPLE_SIZES.indexOf(sampleSize) + 1) % SAMPLE_SIZES.length];
-    onChangeSampleSize(next);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
   return (
     <View style={styles.flex}>
       <CameraView
@@ -107,7 +111,7 @@ export default function CameraScreen({
       <View style={styles.topButtons}>
         <TouchableOpacity
           style={[styles.iconButton, torch && styles.iconButtonActive]}
-          onPress={() => { setTorch((t) => !t); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          onPress={() => { setTorch((on) => !on); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           accessibilityLabel={torch ? t("camera.turnTorchOffA11y") : t("camera.turnTorchOnA11y")}
           accessibilityRole="button"
         >
@@ -116,11 +120,11 @@ export default function CameraScreen({
 
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={cycleSampleSize}
-          accessibilityLabel={t("camera.areaA11y", { size: sampleSize })}
+          onPress={onOpenHistory}
+          accessibilityLabel={t("tabs.history")}
           accessibilityRole="button"
         >
-          <Text style={styles.iconButtonText} numberOfLines={1} adjustsFontSizeToFit>{t("camera.area", { size: sampleSize })}</Text>
+          <Text style={styles.iconButtonText} numberOfLines={1} adjustsFontSizeToFit>{t("tabs.history")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -145,27 +149,15 @@ export default function CameraScreen({
             onChangeRgb={onChangeRgb}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
-            collapsible
             onClose={onClose}
           />
         </View>
       )}
-
-      <View style={styles.buttonWrap}>
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={pickColor}
-          disabled={loading}
-          accessibilityLabel={t("camera.pickColorA11y")}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: loading }}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t("camera.pickColor")}</Text>}
-        </TouchableOpacity>
-      </View>
     </View>
   );
-}
+});
+
+export default CameraScreen;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -176,6 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.15)", paddingVertical: 14, paddingHorizontal: 28,
     borderRadius: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.3)",
   },
+  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   topButtons: {
     position: "absolute", top: 16, left: 20, right: 20,
     flexDirection: "row", justifyContent: "space-between", gap: 8,
@@ -188,15 +181,7 @@ const styles = StyleSheet.create({
   },
   iconButtonActive: { backgroundColor: "rgba(255, 200, 0, 0.35)", borderColor: "rgba(255, 200, 0, 0.8)" },
   iconButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  buttonWrap: { position: "absolute", bottom: 24, left: 0, right: 0, alignItems: "center" },
-  button: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)", paddingVertical: 16, paddingHorizontal: 40,
-    borderRadius: 30, minWidth: 180, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.4)",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  cardWrap: { position: "absolute", bottom: 100, left: 20, right: 20 },
+  cardWrap: { position: "absolute", bottom: 12, left: 12, right: 12 },
   crosshair: {
     position: "absolute", top: "50%", left: "50%", width: 60, height: 60,
     marginLeft: -30, marginTop: -30, justifyContent: "center", alignItems: "center",

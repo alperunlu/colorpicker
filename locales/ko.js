@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "카메라", photo: "사진", history: "기록" },
-  common: { error: "오류", cancel: "취소", loading: "불러오는 중..." },
+  common: { error: "오류", cancel: "취소", loading: "불러오는 중...", back: "뒤로" },
   camera: {
     permissionRequired: "색상을 추출하려면 카메라 권한이 필요합니다",
     continue: "계속",
@@ -14,8 +14,6 @@ export default {
     torchOff: "손전등 꺼짐",
     turnTorchOnA11y: "손전등 켜기",
     turnTorchOffA11y: "손전등 끄기",
-    area: "영역 {{size}}×{{size}}",
-    areaA11y: "샘플 영역 {{size}}×{{size}} 픽셀. 탭하여 변경합니다.",
     flip: "전환",
     flipA11y: "카메라 전환",
     pickColor: "색상 추출",
@@ -57,9 +55,9 @@ export default {
     hint: "값을 탭하면 복사됩니다",
     delete: "삭제",
     deleteA11y: "기록에서 삭제",
-    showDetailsA11y: "자세히 보기",
-    hideDetailsA11y: "자세히 숨기기",
     closeA11y: "닫기",
+    prevPaletteA11y: "이전 팔레트",
+    nextPaletteA11y: "다음 팔레트",
   },
   palette: {
     analogous: "유사색",

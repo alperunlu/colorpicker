@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "Kamera", photo: "Foto", history: "Verlauf" },
-  common: { error: "Fehler", cancel: "Abbrechen", loading: "Wird geladen ..." },
+  common: { error: "Fehler", cancel: "Abbrechen", loading: "Wird geladen ...", back: "Zurück" },
   camera: {
     permissionRequired: "Für die Farberfassung ist der Kamerazugriff erforderlich",
     continue: "Weiter",
@@ -14,8 +14,6 @@ export default {
     torchOff: "Licht aus",
     turnTorchOnA11y: "Taschenlampe einschalten",
     turnTorchOffA11y: "Taschenlampe ausschalten",
-    area: "Bereich {{size}}×{{size}}",
-    areaA11y: "Messbereich {{size}} mal {{size}} Pixel. Zum Ändern tippen.",
     flip: "Wenden",
     flipA11y: "Kamera wechseln",
     pickColor: "Farbe erfassen",
@@ -57,9 +55,9 @@ export default {
     hint: "Tippe auf einen Wert, um ihn zu kopieren",
     delete: "Löschen",
     deleteA11y: "Aus dem Verlauf löschen",
-    showDetailsA11y: "Details anzeigen",
-    hideDetailsA11y: "Details ausblenden",
     closeA11y: "Schließen",
+    prevPaletteA11y: "Vorherige Palette",
+    nextPaletteA11y: "Nächste Palette",
   },
   palette: {
     analogous: "Analog",

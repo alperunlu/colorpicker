@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "Cámara", photo: "Foto", history: "Historial" },
-  common: { error: "Error", cancel: "Cancelar", loading: "Cargando..." },
+  common: { error: "Error", cancel: "Cancelar", loading: "Cargando...", back: "Atrás" },
   camera: {
     permissionRequired: "Se necesita permiso de cámara para capturar colores",
     continue: "Continuar",
@@ -14,8 +14,6 @@ export default {
     torchOff: "Linterna no",
     turnTorchOnA11y: "Encender la linterna",
     turnTorchOffA11y: "Apagar la linterna",
-    area: "Área {{size}}×{{size}}",
-    areaA11y: "Área de muestra de {{size}} por {{size}} píxeles. Toca para cambiar.",
     flip: "Girar",
     flipA11y: "Cambiar de cámara",
     pickColor: "Elegir color",
@@ -57,9 +55,9 @@ export default {
     hint: "Toca un valor para copiarlo",
     delete: "Eliminar",
     deleteA11y: "Eliminar del historial",
-    showDetailsA11y: "Mostrar detalles",
-    hideDetailsA11y: "Ocultar detalles",
     closeA11y: "Cerrar",
+    prevPaletteA11y: "Paleta anterior",
+    nextPaletteA11y: "Paleta siguiente",
   },
   palette: {
     analogous: "Análoga",

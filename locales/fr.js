@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "Appareil photo", photo: "Photo", history: "Historique" },
-  common: { error: "Erreur", cancel: "Annuler", loading: "Chargement..." },
+  common: { error: "Erreur", cancel: "Annuler", loading: "Chargement...", back: "Retour" },
   camera: {
     permissionRequired: "L'accès à l'appareil photo est nécessaire pour capturer des couleurs",
     continue: "Continuer",
@@ -14,8 +14,6 @@ export default {
     torchOff: "Lampe éteinte",
     turnTorchOnA11y: "Allumer la lampe",
     turnTorchOffA11y: "Éteindre la lampe",
-    area: "Zone {{size}}×{{size}}",
-    areaA11y: "Zone d'échantillon de {{size}} sur {{size}} pixels. Touchez pour modifier.",
     flip: "Inverser",
     flipA11y: "Changer d'appareil photo",
     pickColor: "Capturer la couleur",
@@ -57,9 +55,9 @@ export default {
     hint: "Touchez une valeur pour la copier",
     delete: "Supprimer",
     deleteA11y: "Supprimer de l'historique",
-    showDetailsA11y: "Afficher les détails",
-    hideDetailsA11y: "Masquer les détails",
     closeA11y: "Fermer",
+    prevPaletteA11y: "Palette précédente",
+    nextPaletteA11y: "Palette suivante",
   },
   palette: {
     analogous: "Analogue",

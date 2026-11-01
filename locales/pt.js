@@ -1,7 +1,7 @@
 // Brazilian Portuguese.
 export default {
   tabs: { camera: "Câmera", photo: "Foto", history: "Histórico" },
-  common: { error: "Erro", cancel: "Cancelar", loading: "Carregando..." },
+  common: { error: "Erro", cancel: "Cancelar", loading: "Carregando...", back: "Voltar" },
   camera: {
     permissionRequired: "É necessária permissão da câmera para capturar cores",
     continue: "Continuar",
@@ -15,8 +15,6 @@ export default {
     torchOff: "Lanterna desligada",
     turnTorchOnA11y: "Ligar a lanterna",
     turnTorchOffA11y: "Desligar a lanterna",
-    area: "Área {{size}}×{{size}}",
-    areaA11y: "Área de amostra de {{size}} por {{size}} pixels. Toque para alterar.",
     flip: "Virar",
     flipA11y: "Alternar câmera",
     pickColor: "Capturar cor",
@@ -58,9 +56,9 @@ export default {
     hint: "Toque em um valor para copiá-lo",
     delete: "Excluir",
     deleteA11y: "Excluir do histórico",
-    showDetailsA11y: "Mostrar detalhes",
-    hideDetailsA11y: "Ocultar detalhes",
     closeA11y: "Fechar",
+    prevPaletteA11y: "Paleta anterior",
+    nextPaletteA11y: "Próxima paleta",
   },
   palette: {
     analogous: "Análoga",

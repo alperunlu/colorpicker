@@ -8,6 +8,7 @@ export default function HistoryScreen({
   items,
   paletteType,
   onChangePaletteType,
+  onBack,
   onToggleFavorite,
   onDelete,
   onClearNonFavorites,
@@ -28,6 +29,9 @@ export default function HistoryScreen({
   return (
     <View style={styles.flex}>
       <View style={styles.toolbar}>
+        <TouchableOpacity onPress={onBack} style={styles.back} accessibilityRole="button" accessibilityLabel={t("common.back")}>
+          <Text style={styles.backText}>‹ {t("common.back")}</Text>
+        </TouchableOpacity>
         {["all", "favorites"].map((f) => (
           <TouchableOpacity
             key={f}
@@ -87,6 +91,7 @@ export default function HistoryScreen({
             onChangeRgb={(rgb) => setSelected({ hex: selected.hex, rgb })}
             isFavorite={!!selectedItem?.favorite}
             onToggleFavorite={() => onToggleFavorite(selected.hex)}
+            onClose={() => setSelected(null)}
             onDelete={selectedItem ? () => { onDelete(selected.hex); setSelected(null); } : undefined}
           />
         </View>
@@ -97,6 +102,8 @@ export default function HistoryScreen({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  back: { paddingRight: 12, paddingVertical: 6 },
+  backText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   toolbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12 },
   chip: {
     paddingVertical: 6, paddingHorizontal: 14, borderRadius: 16, marginRight: 8,

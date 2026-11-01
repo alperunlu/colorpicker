@@ -1,8 +1,7 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import { averageRgbFromPngBase64 } from "./pixels";
 
-export const SAMPLE_SIZES = [1, 9, 25];
-export const DEFAULT_SAMPLE_SIZE = 9;
+export const SAMPLE_SIZE = 9;
 
 // Maps a touch inside a box that shows an image with resizeMode="contain" back
 // to pixel coordinates in the image. Returns null for touches on the letterbox.
@@ -20,7 +19,7 @@ export const viewToImageCoords = (x, y, box, image) => {
 // Crops a size x size square centered on (cx, cy), clamped inside the image,
 // and returns the average RGB of that square. Averaging a small region instead
 // of reading one pixel smooths out camera sensor noise.
-export const sampleColor = async (uri, image, cx, cy, size = DEFAULT_SAMPLE_SIZE) => {
+export const sampleColor = async (uri, image, cx, cy, size = SAMPLE_SIZE) => {
   const s = Math.max(1, Math.min(size, image.width, image.height));
   const originX = Math.min(Math.max(0, Math.round(cx - s / 2)), image.width - s);
   const originY = Math.min(Math.max(0, Math.round(cy - s / 2)), image.height - s);

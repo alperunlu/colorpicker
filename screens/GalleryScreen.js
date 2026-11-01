@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Pressable, Image, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { View, Text, TouchableOpacity, Pressable, Image, StyleSheet, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
@@ -7,23 +7,34 @@ import ColorCard from "../components/ColorCard";
 import { sampleColor, viewToImageCoords } from "../utils/sample";
 import { t } from "../utils/i18n";
 
-export default function GalleryScreen({
-  sampleSize,
+// The "Choose / Change Photo" button lives in the app's bottom bar and calls
+// `choosePhoto()` through a ref. The chosen image is owned by the parent so it
+// survives switching tabs.
+const GalleryScreen = forwardRef(function GalleryScreen({
+  image,
+  onImageChange,
   rgb,
   onPick,
+  onBusyChange,
+  onOpenHistory,
   onChangeRgb,
   paletteType,
   onChangePaletteType,
   isFavorite,
   onToggleFavorite,
   onClose,
-}) {
-  const [image, setImage] = useState(null); // { uri, width, height }
+}, ref) {
   const [box, setBox] = useState(null);
   const [marker, setMarker] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  const setBusy = (busy) => {
+    busyRef.current = busy;
+    onBusyChange?.(busy);
+  };
 
   const choosePhoto = async () => {
+    if (busyRef.current) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
@@ -37,7 +48,7 @@ export default function GalleryScreen({
         format: ImageManipulator.SaveFormat.JPEG,
         compress: 1,
       });
-      setImage({ uri: normalized.uri, width: normalized.width, height: normalized.height });
+      onImageChange({ uri: normalized.uri, width: normalized.width, height: normalized.height });
       setMarker(null);
     } catch (error) {
       console.error("Error choosing photo:", error);
@@ -47,15 +58,17 @@ export default function GalleryScreen({
     }
   };
 
+  useImperativeHandle(ref, () => ({ choosePhoto }));
+
   const handlePress = async (event) => {
-    if (!image || !box || busy) return;
+    if (!image || !box || busyRef.current) return;
     const { locationX, locationY } = event.nativeEvent;
     const point = viewToImageCoords(locationX, locationY, box, image);
     if (!point) return;
     setMarker({ x: locationX, y: locationY });
     setBusy(true);
     try {
-      const picked = await sampleColor(image.uri, image, point.x, point.y, sampleSize);
+      const picked = await sampleColor(image.uri, image, point.x, point.y);
       onPick(picked);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
@@ -90,6 +103,17 @@ export default function GalleryScreen({
         </View>
       )}
 
+      <View style={styles.topButtons} pointerEvents="box-none">
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={onOpenHistory}
+          accessibilityLabel={t("tabs.history")}
+          accessibilityRole="button"
+        >
+          <Text style={styles.iconButtonText} numberOfLines={1}>{t("tabs.history")}</Text>
+        </TouchableOpacity>
+      </View>
+
       {rgb && (
         <View style={styles.cardWrap}>
           <ColorCard
@@ -99,26 +123,15 @@ export default function GalleryScreen({
             onChangeRgb={onChangeRgb}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
-            collapsible
             onClose={onClose}
           />
         </View>
       )}
-
-      <View style={styles.buttonWrap}>
-        <TouchableOpacity
-          style={[styles.button, busy && styles.buttonDisabled]}
-          onPress={choosePhoto}
-          disabled={busy}
-          accessibilityLabel={t("gallery.choosePhotoA11y")}
-          accessibilityRole="button"
-        >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{image ? t("gallery.changePhoto") : t("gallery.choosePhoto")}</Text>}
-        </TouchableOpacity>
-      </View>
     </View>
   );
-}
+});
+
+export default GalleryScreen;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -129,13 +142,11 @@ const styles = StyleSheet.create({
     position: "absolute", width: 28, height: 28, borderRadius: 14,
     borderWidth: 3, borderColor: "#fff", backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
-  cardWrap: { position: "absolute", bottom: 100, left: 20, right: 20 },
-  buttonWrap: { position: "absolute", bottom: 24, left: 0, right: 0, alignItems: "center" },
-  button: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)", paddingVertical: 16, paddingHorizontal: 40,
-    borderRadius: 30, minWidth: 180, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.4)",
+  topButtons: { position: "absolute", top: 16, left: 20, right: 20, alignItems: "center" },
+  iconButton: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)", paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.25)",
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  iconButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  cardWrap: { position: "absolute", bottom: 12, left: 12, right: 12 },
 });

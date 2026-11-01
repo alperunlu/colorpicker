@@ -2,7 +2,7 @@
 // (enforced by __tests__/locales.test.js).
 export default {
   tabs: { camera: "Camera", photo: "Photo", history: "History" },
-  common: { error: "Error", cancel: "Cancel", loading: "Loading..." },
+  common: { error: "Error", cancel: "Cancel", loading: "Loading...", back: "Back" },
   camera: {
     permissionRequired: "Camera permission required to capture colors",
     continue: "Continue",
@@ -16,8 +16,6 @@ export default {
     torchOff: "Torch Off",
     turnTorchOnA11y: "Turn torch on",
     turnTorchOffA11y: "Turn torch off",
-    area: "Area {{size}}×{{size}}",
-    areaA11y: "Sample area {{size}} by {{size}} pixels. Tap to change.",
     flip: "Flip",
     flipA11y: "Flip camera",
     pickColor: "Pick Color",
@@ -59,9 +57,9 @@ export default {
     hint: "Tap a value to copy it",
     delete: "Delete",
     deleteA11y: "Delete from history",
-    showDetailsA11y: "Show details",
-    hideDetailsA11y: "Hide details",
     closeA11y: "Close",
+    prevPaletteA11y: "Previous palette",
+    nextPaletteA11y: "Next palette",
   },
   palette: {
     analogous: "Analogous",

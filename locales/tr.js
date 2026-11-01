@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "Kamera", photo: "Fotoğraf", history: "Geçmiş" },
-  common: { error: "Hata", cancel: "İptal", loading: "Yükleniyor..." },
+  common: { error: "Hata", cancel: "İptal", loading: "Yükleniyor...", back: "Geri" },
   camera: {
     permissionRequired: "Renk yakalamak için kamera izni gerekli",
     continue: "Devam",
@@ -14,8 +14,6 @@ export default {
     torchOff: "Fener Kapalı",
     turnTorchOnA11y: "Feneri aç",
     turnTorchOffA11y: "Feneri kapat",
-    area: "Alan {{size}}×{{size}}",
-    areaA11y: "Örnek alanı {{size}} x {{size}} piksel. Değiştirmek için dokunun.",
     flip: "Çevir",
     flipA11y: "Kamerayı çevir",
     pickColor: "Renk Seç",
@@ -57,9 +55,9 @@ export default {
     hint: "Kopyalamak için bir değere dokunun",
     delete: "Sil",
     deleteA11y: "Geçmişten sil",
-    showDetailsA11y: "Ayrıntıları göster",
-    hideDetailsA11y: "Ayrıntıları gizle",
     closeA11y: "Kapat",
+    prevPaletteA11y: "Önceki palet",
+    nextPaletteA11y: "Sonraki palet",
   },
   palette: {
     analogous: "Analog",

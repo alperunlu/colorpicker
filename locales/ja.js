@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "カメラ", photo: "写真", history: "履歴" },
-  common: { error: "エラー", cancel: "キャンセル", loading: "読み込み中..." },
+  common: { error: "エラー", cancel: "キャンセル", loading: "読み込み中...", back: "戻る" },
   camera: {
     permissionRequired: "色を取得するにはカメラへのアクセス許可が必要です",
     continue: "続ける",
@@ -14,8 +14,6 @@ export default {
     torchOff: "ライトOFF",
     turnTorchOnA11y: "ライトをオンにする",
     turnTorchOffA11y: "ライトをオフにする",
-    area: "範囲 {{size}}×{{size}}",
-    areaA11y: "サンプル範囲 {{size}}×{{size}} ピクセル。タップして変更します。",
     flip: "切替",
     flipA11y: "カメラを切り替える",
     pickColor: "色を取得",
@@ -57,9 +55,9 @@ export default {
     hint: "値をタップするとコピーします",
     delete: "削除",
     deleteA11y: "履歴から削除",
-    showDetailsA11y: "詳細を表示",
-    hideDetailsA11y: "詳細を隠す",
     closeA11y: "閉じる",
+    prevPaletteA11y: "前のパレット",
+    nextPaletteA11y: "次のパレット",
   },
   palette: {
     analogous: "類似色",

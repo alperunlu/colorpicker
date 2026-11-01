@@ -1,7 +1,7 @@
 // Simplified Chinese.
 export default {
   tabs: { camera: "相机", photo: "照片", history: "历史" },
-  common: { error: "错误", cancel: "取消", loading: "加载中..." },
+  common: { error: "错误", cancel: "取消", loading: "加载中...", back: "返回" },
   camera: {
     permissionRequired: "需要相机权限才能取色",
     continue: "继续",
@@ -15,8 +15,6 @@ export default {
     torchOff: "手电筒关",
     turnTorchOnA11y: "打开手电筒",
     turnTorchOffA11y: "关闭手电筒",
-    area: "范围 {{size}}×{{size}}",
-    areaA11y: "取样范围 {{size}}×{{size}} 像素，点按可更改。",
     flip: "翻转",
     flipA11y: "切换摄像头",
     pickColor: "取色",
@@ -58,9 +56,9 @@ export default {
     hint: "点按数值即可复制",
     delete: "删除",
     deleteA11y: "从历史中删除",
-    showDetailsA11y: "显示详情",
-    hideDetailsA11y: "隐藏详情",
     closeA11y: "关闭",
+    prevPaletteA11y: "上一个配色",
+    nextPaletteA11y: "下一个配色",
   },
   palette: {
     analogous: "类似色",

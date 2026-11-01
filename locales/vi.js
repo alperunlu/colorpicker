@@ -1,6 +1,6 @@
 export default {
   tabs: { camera: "Máy ảnh", photo: "Ảnh", history: "Lịch sử" },
-  common: { error: "Lỗi", cancel: "Hủy", loading: "Đang tải..." },
+  common: { error: "Lỗi", cancel: "Hủy", loading: "Đang tải...", back: "Quay lại" },
   camera: {
     permissionRequired: "Cần quyền truy cập máy ảnh để lấy màu",
     continue: "Tiếp tục",
@@ -14,8 +14,6 @@ export default {
     torchOff: "Đèn pin tắt",
     turnTorchOnA11y: "Bật đèn pin",
     turnTorchOffA11y: "Tắt đèn pin",
-    area: "Vùng {{size}}×{{size}}",
-    areaA11y: "Vùng lấy mẫu {{size}} x {{size}} điểm ảnh. Chạm để thay đổi.",
     flip: "Đổi",
     flipA11y: "Đổi máy ảnh",
     pickColor: "Lấy màu",
@@ -57,9 +55,9 @@ export default {
     hint: "Chạm vào một giá trị để sao chép",
     delete: "Xóa",
     deleteA11y: "Xóa khỏi lịch sử",
-    showDetailsA11y: "Hiện chi tiết",
-    hideDetailsA11y: "Ẩn chi tiết",
     closeA11y: "Đóng",
+    prevPaletteA11y: "Bảng màu trước",
+    nextPaletteA11y: "Bảng màu tiếp theo",
   },
   palette: {
     analogous: "Tương đồng",
